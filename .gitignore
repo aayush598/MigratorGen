@@ -1,0 +1,8 @@
+.venv
+__pycache__
+*/__pycache__
+.pytest_cache
+.env
+*/.pytest_cachegenerated_migrator/
+*.bak
+*/*.egg-info
