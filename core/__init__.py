@@ -11,7 +11,6 @@ from .changelog_parser import (
 from .version_resolver import VersionResolver, MigrationPath
 from .transformers import get_transformer, TRANSFORMER_MAP
 from .migration_engine import MigrationEngine, MigrationReport, TransformResult
-from .llm_parser import LLMParser
 from .migrator_generator import MigratorGenerator
 
 __all__ = [
@@ -26,6 +25,5 @@ __all__ = [
     "MigrationEngine",
     "MigrationReport",
     "TransformResult",
-    "LLMParser",
     "MigratorGenerator",
 ]

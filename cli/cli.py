@@ -22,7 +22,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from core.changelog_parser import ChangelogParser, VersionChangelog, MigrationRule, ChangeType
 from core.version_resolver import VersionResolver
 from core.migration_engine import MigrationEngine
-from core.llm_parser import LLMParser
 from core.migrator_generator import MigratorGenerator
 
 
@@ -31,7 +30,6 @@ def cmd_create(args):
     changelog_path = Path(args.changelog)
     output_dir = Path(args.output)
     library_name = args.library
-    use_llm = not args.no_llm
 
     if not changelog_path.exists():
         print(f"❌ Changelog file not found: {changelog_path}")
@@ -45,17 +43,6 @@ def cmd_create(args):
     changelogs = parser.parse(content, fmt=fmt)
 
     print(f"   Found {len(changelogs)} version(s)")
-
-    # Use LLM to extract rules from markdown changelogs
-    if use_llm:
-        needs_llm = [vc for vc in changelogs if vc.raw_notes and not vc.rules]
-        if needs_llm:
-            print(f"\n🤖 Using LLM to extract {len(needs_llm)} version changelog(s)...")
-            llm = LLMParser()
-            for vc in needs_llm:
-                print(f"   Parsing v{vc.version}...")
-                vc.rules = llm.parse_changelog_entry(vc.version, vc.raw_notes)
-                print(f"   → {len(vc.rules)} rule(s) extracted")
 
     total_rules = sum(len(vc.rules) for vc in changelogs)
     print(f"\n📋 Total migration rules: {total_rules}")
@@ -108,14 +95,6 @@ def cmd_update(args):
     if not merged:
         print("   No new versions found. Nothing to update.")
         return
-
-    if not args.no_llm:
-        print(f"\n🤖 Using LLM to parse new versions...")
-        llm = LLMParser()
-        for vc in merged:
-            if vc.raw_notes and not vc.rules:
-                vc.rules = llm.parse_changelog_entry(vc.version, vc.raw_notes)
-                print(f"   v{vc.version}: {len(vc.rules)} rule(s)")
 
     all_changelogs = old_changelogs + merged
     library_name = old_data.get("library", args.library or "unknown")
@@ -235,7 +214,7 @@ def cmd_rules(args):
 
 
 def cmd_interactive(args):
-    """Interactive rule builder - build rules manually without LLM."""
+    """Interactive rule builder - build rules manually."""
     print("\n🔧 Interactive Rule Builder")
     print("=" * 40)
     print("Build migration rules step by step.\n")
@@ -325,9 +304,6 @@ Examples:
   # Create a migrator from a JSON changelog
   python cli.py create --changelog changelog.json --library mylib --output ./dist/
 
-  # Create from a markdown CHANGELOG.md (uses LLM)
-  python cli.py create --changelog CHANGELOG.md --library mylib --output ./dist/
-
   # Run migration
   python cli.py run --rules dist/migration_rules.json --from 1.0.0 --to 2.0.0 ./myproject/
 
@@ -349,7 +325,6 @@ Examples:
     p.add_argument("--changelog", required=True, help="Path to changelog file")
     p.add_argument("--library", required=True, help="Library name")
     p.add_argument("--output", default="./generated_migrator", help="Output directory")
-    p.add_argument("--no-llm", action="store_true", help="Skip LLM parsing")
 
     # update
     p = subparsers.add_parser("update", help="Update existing migrator")
@@ -357,7 +332,6 @@ Examples:
     p.add_argument("--new-changelog", required=True, help="Path to new changelog")
     p.add_argument("--output", help="Output directory (default: same as existing)")
     p.add_argument("--library", help="Library name override")
-    p.add_argument("--no-llm", action="store_true")
 
     # run
     p = subparsers.add_parser("run", help="Run migration on code")
