@@ -2,27 +2,29 @@
 MigratorGen CLI - Main command-line interface for the migration platform.
 
 Commands:
-  create       Create a new migrator from a changelog file
-  update       Update an existing migrator with a new changelog
-  run          Run a migration on code
-  preview      Preview what would change without modifying files
-  rules        List/inspect migration rules
-  interactive  Interactive rule builder
+  create          Create a new migrator from a changelog file
+  update          Update an existing migrator with a new changelog
+  run             Run a migration on code
+  preview         Preview what would change without modifying files
+  rules           List/inspect migration rules
+  interactive     Interactive rule builder
+  export-schema   Export JSON schema for migration rules
+  validate-rules  Validate a migration rules JSON file
 """
 
 import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Optional
 
 # Add parent directory to sys.path so 'core' can be imported when running cli/cli.py directly
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from core.changelog_parser import ChangelogParser, VersionChangelog, MigrationRule, ChangeType
+from core.changelog_parser import ChangelogParser, VersionChangelog, MigrationRule, ChangeType, MigrationFile
 from core.version_resolver import VersionResolver
 from core.migration_engine import MigrationEngine
 from core.migrator_generator import MigratorGenerator
+from pydantic import ValidationError
 
 
 def cmd_create(args):
@@ -39,25 +41,25 @@ def cmd_create(args):
     content = changelog_path.read_text(encoding="utf-8")
 
     parser = ChangelogParser()
-    fmt = "json" if changelog_path.suffix == ".json" else "auto"
-    changelogs = parser.parse(content, fmt=fmt)
+    try:
+        changelogs = parser.parse(content, fmt="json")
+    except ValidationError as e:
+        print(f"❌ Validation failed for {changelog_path}:\n{e}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"❌ Failed to parse {changelog_path}:\n{e}")
+        sys.exit(1)
 
     print(f"   Found {len(changelogs)} version(s)")
 
     total_rules = sum(len(vc.rules) for vc in changelogs)
     print(f"\n📋 Total migration rules: {total_rules}")
 
-    # Generate the migrator
     print(f"\n🔨 Generating migrator package...")
     generator = MigratorGenerator(library_name=library_name)
     generator.generate(changelogs, output_dir)
 
     print(f"\n✅ Done! Your migrator is at: {output_dir}")
-    print(f"\nTo use it:")
-    print(f"  cd {output_dir}")
-    print(f"  pip install -e .")
-    print(f"  {generator.package_name} list-versions")
-    print(f"  {generator.package_name} migrate --from 1.0.0 --to 2.0.0 /path/to/project")
 
 
 def cmd_update(args):
@@ -70,25 +72,22 @@ def cmd_update(args):
         sys.exit(1)
 
     print(f"📖 Loading existing migration rules: {old_rules_path}")
-    old_data = json.loads(old_rules_path.read_text())
-    old_changelogs = []
-    for entry in old_data.get("versions", []):
-        vc = VersionChangelog(
-            version=entry["version"],
-            release_date=entry.get("release_date"),
-            raw_notes=entry.get("raw_notes", ""),
-        )
-        vc.rules = [MigrationRule.from_dict(r) for r in entry.get("rules", [])]
-        old_changelogs.append(vc)
+    parser = ChangelogParser()
+    try:
+        old_changelogs = parser.parse(old_rules_path.read_text(encoding="utf-8"), fmt="json")
+    except Exception as e:
+        print(f"❌ Failed to parse existing rules:\n{e}")
+        sys.exit(1)
 
     print(f"   {len(old_changelogs)} existing version(s)")
 
     print(f"\n📖 Reading new changelog: {new_changelog_path}")
-    new_content = new_changelog_path.read_text(encoding="utf-8")
-    parser = ChangelogParser()
-    new_changelogs = parser.parse(new_content, fmt="auto")
+    try:
+        new_changelogs = parser.parse(new_changelog_path.read_text(encoding="utf-8"), fmt="json")
+    except Exception as e:
+        print(f"❌ Failed to parse new changelog:\n{e}")
+        sys.exit(1)
 
-    # Find new versions
     merged = parser.merge_changelogs(old_changelogs, new_changelogs)
     print(f"   {len(merged)} new version(s) detected")
 
@@ -97,7 +96,14 @@ def cmd_update(args):
         return
 
     all_changelogs = old_changelogs + merged
-    library_name = old_data.get("library", args.library or "unknown")
+    
+    # Try to load library name from old data if possible
+    try:
+        old_data = json.loads(old_rules_path.read_text(encoding="utf-8"))
+        library_name = old_data.get("library", args.library or "unknown")
+    except:
+        library_name = args.library or "unknown"
+        
     output_dir = Path(args.output) if args.output else old_rules_path.parent
 
     print(f"\n🔨 Regenerating migrator...")
@@ -115,17 +121,13 @@ def cmd_run(args):
         print(f"❌ Source path not found: {source_path}")
         sys.exit(1)
 
-    # Load rules from JSON file or inline changelog
     if migration_rules_path and migration_rules_path.exists():
-        data = json.loads(migration_rules_path.read_text())
-        changelogs = []
-        for entry in data.get("versions", []):
-            vc = VersionChangelog(
-                version=entry["version"],
-                release_date=entry.get("release_date"),
-            )
-            vc.rules = [MigrationRule.from_dict(r) for r in entry.get("rules", [])]
-            changelogs.append(vc)
+        parser = ChangelogParser()
+        try:
+            changelogs = parser.parse(migration_rules_path.read_text(encoding="utf-8"), fmt="json")
+        except Exception as e:
+            print(f"❌ Invalid rules file:\n{e}")
+            sys.exit(1)
     else:
         print("❌ Must provide --rules path to migration_rules.json")
         sys.exit(1)
@@ -171,12 +173,8 @@ def cmd_preview(args):
     source_code = Path(args.file).read_text(encoding="utf-8")
     rules_path = Path(args.rules)
 
-    data = json.loads(rules_path.read_text())
-    changelogs = []
-    for entry in data.get("versions", []):
-        vc = VersionChangelog(version=entry["version"], release_date=entry.get("release_date"))
-        vc.rules = [MigrationRule.from_dict(r) for r in entry.get("rules", [])]
-        changelogs.append(vc)
+    parser = ChangelogParser()
+    changelogs = parser.parse(rules_path.read_text(encoding="utf-8"), fmt="json")
 
     resolver = VersionResolver(changelogs)
     path = resolver.resolve_path(args.from_version, args.to_version)
@@ -193,22 +191,28 @@ def cmd_rules(args):
         print(f"❌ Rules file not found: {rules_path}")
         sys.exit(1)
 
-    data = json.loads(rules_path.read_text())
-    library = data.get("library", "Unknown")
+    try:
+        content = rules_path.read_text(encoding="utf-8")
+        mf = MigrationFile.model_validate_json(content)
+        library = mf.library
+        versions = mf.versions
+    except Exception as e:
+        # Fallback if bare list
+        parser = ChangelogParser()
+        versions = parser.parse(rules_path.read_text(encoding="utf-8"), fmt="json")
+        library = "Unknown"
 
     print(f"\n📚 Migration rules for: {library}")
     print("=" * 50)
 
-    for entry in data.get("versions", []):
-        version = entry["version"]
-        rules = entry.get("rules", [])
-        date = entry.get("release_date", "")
-        print(f"\n  v{version} {f'({date})' if date else ''} - {len(rules)} rule(s)")
-        for rule in rules:
-            ct = rule.get("change_type", "?")
-            desc = rule.get("description", "")
-            old = rule.get("old_name", "")
-            new = rule.get("new_name", "")
+    for vc in versions:
+        date = vc.release_date or ""
+        print(f"\n  v{vc.version} {f'({date})' if date else ''} - {len(vc.rules)} rule(s)")
+        for rule in vc.rules:
+            ct = rule.change_type.value
+            desc = rule.description
+            old = rule.old_name
+            new = rule.new_name
             rename_str = f" [{old} -> {new}]" if old and new else ""
             print(f"    • [{ct}]{rename_str} {desc}")
 
@@ -221,10 +225,13 @@ def cmd_interactive(args):
 
     rules = []
     version = input("Version (e.g. 2.0.0): ").strip()
+    rule_counter = 1
 
     while True:
         print("\nChange types:")
         for i, ct in enumerate(ChangeType, 1):
+            if ct.value == "custom_transform":
+                continue
             print(f"  {i}. {ct.value}")
         print("  0. Done")
 
@@ -240,13 +247,14 @@ def cmd_interactive(args):
             continue
 
         rule_data = {
+            "id": f"RULE-{rule_counter:03d}",
             "change_type": change_type.value,
             "version_introduced": version,
             "description": input("Description: ").strip(),
         }
 
         # Prompt for relevant fields based on type
-        if change_type in (ChangeType.RENAME_FUNCTION, ChangeType.RENAME_CLASS, ChangeType.RENAME_ATTRIBUTE):
+        if change_type in (ChangeType.RENAME_FUNCTION, ChangeType.RENAME_CLASS, ChangeType.RENAME_ATTRIBUTE, ChangeType.REPLACE_WITH_PROPERTY):
             rule_data["old_name"] = input("Old name: ").strip()
             rule_data["new_name"] = input("New name: ").strip()
 
@@ -261,6 +269,14 @@ def cmd_interactive(args):
             rule_data["argument_name"] = input("Argument name: ").strip()
             if change_type == ChangeType.ADD_ARGUMENT:
                 rule_data["default_value"] = input("Default value (Python expr): ").strip()
+                
+        elif change_type == ChangeType.CHANGE_ARGUMENT_DEFAULT:
+            rule_data["argument_name"] = input("Argument name: ").strip()
+            rule_data["default_value"] = input("Default value (Python expr): ").strip()
+
+        elif change_type == ChangeType.REORDER_ARGUMENTS:
+            rule_data["function_name"] = input("Function name: ").strip()
+            rule_data["new_order"] = [x.strip() for x in input("New order (comma separated): ").split(',')]
 
         elif change_type == ChangeType.MOVE_TO_MODULE:
             rule_data["old_name"] = input("Symbol name: ").strip()
@@ -274,51 +290,75 @@ def cmd_interactive(args):
         elif change_type in (ChangeType.ADD_DECORATOR, ChangeType.REMOVE_DECORATOR):
             rule_data["function_name"] = input("Function name: ").strip()
             rule_data["decorator_name"] = input("Decorator name (without @): ").strip()
+            
+        elif change_type in (ChangeType.REMOVE_FUNCTION, ChangeType.REMOVE_CLASS):
+            rule_data["old_name"] = input("Symbol name: ").strip()
 
         try:
-            rule = MigrationRule.from_dict(rule_data)
+            rule = MigrationRule(**rule_data)
             rules.append(rule)
-            print(f"✓ Rule added: {rule.change_type.value}")
+            print(f"✓ Rule added: {rule.change_type.value} with ID {rule.id}")
+            rule_counter += 1
         except Exception as e:
             print(f"❌ Invalid rule: {e}")
 
     if rules:
         output = args.output or f"rules_{version}.json"
-        vc = VersionChangelog(version=version, release_date=None, rules=rules)
-        data = {
-            "library": input("\nLibrary name: ").strip(),
-            "versions": [vc.to_dict()],
-        }
-        Path(output).write_text(json.dumps(data, indent=2), encoding="utf-8")
+        vc = VersionChangelog(version=version, rules=rules)
+        mf = MigrationFile(library=input("\nLibrary name: ").strip(), versions=[vc])
+        Path(output).write_text(mf.model_dump_json(indent=2, exclude_none=True), encoding="utf-8")
         print(f"\n✅ Saved {len(rules)} rule(s) to {output}")
     else:
         print("No rules created.")
+
+
+def cmd_export_schema(args):
+    """Export JSON schema for migration rules."""
+    schema = MigrationFile.model_json_schema()
+    output_path = Path("migration-schema.json")
+    output_path.write_text(json.dumps(schema, indent=2))
+    print(f"✅ Schema exported to {output_path}")
+
+
+def cmd_validate_rules(args):
+    """Validate a migration rules JSON file."""
+    rules_path = Path(args.file)
+    if not rules_path.exists():
+        print(f"❌ File not found: {rules_path}")
+        sys.exit(1)
+
+    print(f"🔍 Validating {rules_path}...")
+    try:
+        content = rules_path.read_text(encoding="utf-8")
+        data = json.loads(content)
+        
+        if isinstance(data, list):
+            # Backward compatibility check
+            for item in data:
+                VersionChangelog(**item)
+        else:
+            MigrationFile(**data)
+            
+        print("✅ Validation successful! The rules are valid.")
+    except ValidationError as e:
+        print("❌ Validation Failed:")
+        for error in e.errors():
+            loc = " -> ".join(str(x) for x in error["loc"])
+            msg = error["msg"]
+            print(f"  - {loc}: {msg}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"❌ Validation Failed with unexpected error:\n{e}")
+        sys.exit(1)
 
 
 def main():
     parser = argparse.ArgumentParser(
         description="MigratorGen - Generate code migrators from changelogs",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  # Create a migrator from a JSON changelog
-  python cli.py create --changelog changelog.json --library mylib --output ./dist/
-
-  # Run migration
-  python cli.py run --rules dist/migration_rules.json --from 1.0.0 --to 2.0.0 ./myproject/
-
-  # Preview changes only
-  python cli.py preview --rules dist/migration_rules.json --from 1.0.0 --to 2.0.0 myfile.py
-
-  # Interactive rule builder
-  python cli.py interactive
-
-  # List rules
-  python cli.py rules --rules dist/migration_rules.json
-        """,
     )
 
-    subparsers = parser.add_subparsers(dest="command")
+    subparsers = parser.add_subparsers(dest="command", required=True)
 
     # create
     p = subparsers.add_parser("create", help="Create migrator from changelog")
@@ -356,6 +396,13 @@ Examples:
     # interactive
     p = subparsers.add_parser("interactive", help="Interactive rule builder")
     p.add_argument("--output", help="Output file for rules")
+    
+    # export-schema
+    p = subparsers.add_parser("export-schema", help="Export JSON schema for rules")
+    
+    # validate-rules
+    p = subparsers.add_parser("validate-rules", help="Validate a rules file")
+    p.add_argument("file", help="JSON rules file to validate")
 
     args = parser.parse_args()
 
@@ -366,6 +413,8 @@ Examples:
         "preview": cmd_preview,
         "rules": cmd_rules,
         "interactive": cmd_interactive,
+        "export-schema": cmd_export_schema,
+        "validate-rules": cmd_validate_rules,
     }
 
     if args.command in commands:

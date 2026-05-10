@@ -73,11 +73,10 @@ class MigrationEngine:
     - Single file migration
     - Directory migration (recursive)
     - Dry-run mode
-    - Custom LLM transforms for complex changes
     """
 
-    def __init__(self, llm_parser=None):
-        self.llm_parser = llm_parser
+    def __init__(self):
+        pass
 
     def migrate_code(
         self,
@@ -119,13 +118,7 @@ class MigrationEngine:
     ) -> Tuple[str, List[str]]:
         """Apply a single rule to code. Returns (new_code, changes_list)."""
 
-        # Handle custom transform via LLM
-        if rule.change_type == ChangeType.CUSTOM_TRANSFORM:
-            if self.llm_parser:
-                new_code = self.llm_parser.generate_custom_transform(rule, code)
-                if new_code and new_code != code:
-                    return new_code, [f"Custom transform: {rule.description}"]
-            return code, []
+
 
         transformer = get_transformer(rule)
         if transformer is None:

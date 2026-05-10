@@ -12,7 +12,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from core.changelog_parser import (
-    ChangelogParser, MigrationRule, ChangeType, VersionChangelog
+    ChangelogParser, MigrationRule, ChangeType, VersionChangelog, MigrationFile
 )
 from core.version_resolver import VersionResolver
 from core.migration_engine import MigrationEngine
@@ -29,9 +29,12 @@ from core.transformers import (
 
 def make_rule(**kwargs) -> MigrationRule:
     defaults = {
+        "id": "RULE-TEST",
         "change_type": ChangeType.RENAME_FUNCTION,
         "version_introduced": "2.0.0",
         "description": "Test rule",
+        "old_name": "default_old",
+        "new_name": "default_new",
     }
     defaults.update(kwargs)
     return MigrationRule(**defaults)
@@ -55,6 +58,7 @@ class TestChangelogParser:
                     "release_date": "2024-01-01",
                     "rules": [
                         {
+                            "id": "RULE-001",
                             "change_type": "rename_function",
                             "version_introduced": "2.0.0",
                             "description": "Renamed foo to bar",
@@ -72,6 +76,7 @@ class TestChangelogParser:
         assert len(changelogs[0].rules) == 1
         assert changelogs[0].rules[0].old_name == "foo"
         assert changelogs[0].rules[0].new_name == "bar"
+        assert changelogs[0].rules[0].id == "RULE-001"
 
 
 
@@ -83,8 +88,8 @@ class TestChangelogParser:
 
     def test_merge_changelogs(self):
         parser = ChangelogParser()
-        old = [VersionChangelog("1.0.0", None), VersionChangelog("2.0.0", None)]
-        new = [VersionChangelog("1.0.0", None), VersionChangelog("2.0.0", None), VersionChangelog("3.0.0", None)]
+        old = [VersionChangelog(version="1.0.0"), VersionChangelog(version="2.0.0")]
+        new = [VersionChangelog(version="1.0.0"), VersionChangelog(version="2.0.0"), VersionChangelog(version="3.0.0")]
         merged = parser.merge_changelogs(old, new)
         assert len(merged) == 1
         assert merged[0].version == "3.0.0"
@@ -98,12 +103,13 @@ class TestVersionResolver:
         changelogs = []
         for v in versions:
             rule = make_rule(
+                id=f"RULE-V-{v.replace('.', '_')}",
                 change_type=ChangeType.RENAME_FUNCTION,
                 version_introduced=v,
                 old_name=f"func_v{v.replace('.', '_')}",
                 new_name=f"new_func_v{v.replace('.', '_')}",
             )
-            vc = VersionChangelog(version=v, release_date=None, rules=[rule])
+            vc = VersionChangelog(version=v, rules=[rule])
             changelogs.append(vc)
         return changelogs
 
@@ -311,11 +317,13 @@ class TestMigrationEngine:
         code = "from mylib import Client\nclient = Client()\nconn = connect()\n"
         rules = [
             make_rule(
+                id="RULE-1",
                 change_type=ChangeType.RENAME_CLASS,
                 old_name="Client",
                 new_name="APIClient",
             ),
             make_rule(
+                id="RULE-2",
                 change_type=ChangeType.RENAME_FUNCTION,
                 old_name="connect",
                 new_name="create_connection",
@@ -360,6 +368,7 @@ class TestMigrationEngine:
 class TestMigrationRuleSerialization:
     def test_roundtrip_serialization(self):
         rule = MigrationRule(
+            id="RULE-123",
             change_type=ChangeType.RENAME_FUNCTION,
             version_introduced="2.0.0",
             description="Test",
@@ -371,6 +380,72 @@ class TestMigrationRuleSerialization:
         assert restored.change_type == rule.change_type
         assert restored.old_name == rule.old_name
         assert restored.new_name == rule.new_name
+
+
+# ---- Validation Tests ----
+
+class TestStrictValidation:
+    def test_invalid_field_types_and_missing_required(self):
+        # Missing id
+        with pytest.raises(Exception):
+            MigrationRule(
+                change_type=ChangeType.RENAME_FUNCTION,
+                version_introduced="1.0.0",
+                description="desc",
+                old_name="foo",
+                new_name="bar"
+            )
+
+        # Invalid field type (version_introduced regex)
+        with pytest.raises(Exception):
+            make_rule(version_introduced="v2")
+
+        # Missing semantic required field (new_name for rename_function)
+        with pytest.raises(Exception, match="new_name"):
+            MigrationRule(
+                id="R1",
+                change_type=ChangeType.RENAME_FUNCTION,
+                version_introduced="1.0.0",
+                description="desc",
+                old_name="foo"
+            )
+
+    def test_duplicate_ids(self):
+        vc = VersionChangelog(version="1.0.0", rules=[
+            make_rule(id="R1"),
+            make_rule(id="R1", old_name="other", new_name="other2")
+        ])
+        with pytest.raises(Exception, match="Duplicate rule ID"):
+            MigrationFile(library="lib", versions=[vc])
+
+    def test_conflicting_renames(self):
+        vc = VersionChangelog(version="1.0.0", rules=[
+            make_rule(id="R1", old_name="foo", new_name="bar"),
+            make_rule(id="R2", old_name="foo", new_name="baz")
+        ])
+        with pytest.raises(Exception, match="Conflicting rename rule"):
+            MigrationFile(library="lib", versions=[vc])
+
+    def test_invalid_python_expression(self):
+        with pytest.raises(Exception, match="Invalid Python expression"):
+            make_rule(
+                change_type=ChangeType.ADD_ARGUMENT,
+                function_name="foo",
+                argument_name="bar",
+                default_value="class class # syntax error"
+            )
+
+    def test_unknown_fields(self):
+        with pytest.raises(Exception):
+            MigrationRule(**{
+                "id": "R1",
+                "change_type": "rename_function",
+                "version_introduced": "1.0.0",
+                "description": "desc",
+                "old_name": "foo",
+                "new_name": "bar",
+                "unknown_field": "123"
+            })
 
 
 if __name__ == "__main__":
