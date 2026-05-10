@@ -2,7 +2,7 @@
 
 > Automatically migrate Python code across library versions by parsing changelogs into structured, machine-executable rules.
 
-MigratorGen reads your library's changelog (JSON or Markdown), extracts breaking changes, and produces a **standalone CLI migrator package** that users install once and run to upgrade (or downgrade) their codebase — fully automated, AST-accurate, with backup safety.
+MigratorGen reads your library's changelog (JSON), extracts breaking changes, and produces a **standalone CLI migrator package** that users install once and run to upgrade (or downgrade) their codebase — fully automated, AST-accurate, with backup safety.
 
 ---
 
@@ -26,7 +26,6 @@ MigratorGen reads your library's changelog (JSON or Markdown), extracts breaking
   - [Generated CLI Commands](#generated-cli-commands)
 - [Python API (Programmatic Usage)](#python-api-programmatic-usage)
 - [Writing Your Changelog JSON](#writing-your-changelog-json)
-- [Using a Markdown Changelog (LLM mode)](#using-a-markdown-changelog-llm-mode)
 - [Downgrade Support](#downgrade-support)
 - [Backup Behaviour](#backup-behaviour)
 - [Examples](#examples)
@@ -37,17 +36,13 @@ MigratorGen reads your library's changelog (JSON or Markdown), extracts breaking
 ## How It Works
 
 ```
-Your Changelog (JSON or .md)
+Your Changelog (JSON)
          │
          ▼
   ┌──────────────────┐
   │  ChangelogParser  │  ──→  Parses versions + rules
   └──────────────────┘
-         │
-         ▼
-  ┌──────────────────┐
-  │  LLMParser (opt) │  ──→  Uses an LLM to extract rules from Markdown text
-  └──────────────────┘
+
          │
          ▼
   ┌──────────────────┐
@@ -75,17 +70,15 @@ migrator_platform/
 │   └── cli.py                  # Main CLI entry point (MigratorGen platform)
 │
 ├── core/
-│   ├── changelog_parser.py     # Parses JSON/Markdown changelogs into MigrationRule objects
+│   ├── changelog_parser.py     # Parses JSON changelogs into MigrationRule objects
 │   ├── version_resolver.py     # Resolves upgrade/downgrade paths between arbitrary versions
 │   ├── migration_engine.py     # Applies transformation rules to Python source files
 │   ├── migrator_generator.py   # Generates the standalone distributable migrator package
 │   ├── transformers.py         # libcst-based AST transformers for each change type
-│   ├── llm_parser.py           # LLM (OpenAI) integration to parse Markdown changelogs
 │   └── __init__.py
 │
 ├── examples/
 │   ├── mylib_changelog.json    # Example structured JSON changelog
-│   ├── mylib_changelog.md      # Example Markdown changelog (for LLM mode)
 │   └── sample_user_code.py     # Example target Python file to migrate
 │
 ├── generated_migrator/         # Output of `cli create` — distributable migrator package
@@ -125,7 +118,6 @@ uv pip install -r requirements.txt
 | Package | Purpose |
 |---|---|
 | `libcst>=1.0.0` | Concrete Syntax Tree — powers all code transformations |
-| `openai>=1.0.0` | Optional — only needed for Markdown changelog (LLM) parsing |
 | `pytest>=7.0.0` | Testing |
 
 > **Note for CachyOS / Arch users:** Always use `uv pip` inside the activated `.venv`, not the system `pip`. Run `source .venv/bin/activate` before any command.
@@ -140,7 +132,7 @@ MigratorGen accepts two input formats:
 
 #### 1. Structured JSON (recommended)
 
-A JSON file that explicitly lists every version and its machine-readable rules. This is the most reliable and requires no LLM.
+A JSON file that explicitly lists every version and its machine-readable rules.
 
 ```json
 {
@@ -162,18 +154,6 @@ A JSON file that explicitly lists every version and its machine-readable rules. 
     }
   ]
 }
-```
-
-#### 2. Markdown CHANGELOG.md (LLM-assisted)
-
-A standard Keep-a-Changelog style Markdown file. The platform uses an LLM (via OpenAI API) to extract structured rules from free-text descriptions.
-
-```markdown
-## 2.0.0 - 2024-03-01
-
-### Breaking Changes
-- Renamed `connect()` to `create_connection()`
-- `Client` class renamed to `APIClient`
 ```
 
 ---
@@ -228,10 +208,9 @@ python cli/cli.py create \
 
 | Flag | Required | Description |
 |---|---|---|
-| `--changelog` | Yes | Path to changelog file (`.json` or `.md`) |
+| `--changelog` | Yes | Path to changelog file (`.json`) |
 | `--library` | Yes | The library name (e.g. `mylib`, `requests`) |
 | `--output` | No | Output directory (default: `./generated_migrator`) |
-| `--no-llm` | No | Skip LLM parsing even for Markdown changelogs |
 
 **Output structure:**
 ```
@@ -263,7 +242,6 @@ python cli/cli.py update \
 | `--new-changelog` | Yes | Path to the new changelog file |
 | `--output` | No | Output dir (defaults to same location as `--existing`) |
 | `--library` | No | Override library name |
-| `--no-llm` | No | Skip LLM parsing |
 
 Only **new versions** found in the new changelog will be merged in — existing versions are preserved.
 
@@ -548,23 +526,6 @@ The JSON schema for a full changelog:
 
 ---
 
-## Using a Markdown Changelog (LLM mode)
-
-If your changelog is a standard `CHANGELOG.md`, the platform can use an LLM to automatically extract structured rules from free-text entries:
-
-```bash
-# Requires OPENAI_API_KEY environment variable
-export OPENAI_API_KEY=sk-...
-
-python cli/cli.py create \
-  --changelog CHANGELOG.md \
-  --library mylib \
-  --output ./generated_migrator
-```
-
-The LLM mode is triggered automatically when the input file is `.md` or when the parser detects Markdown format. Use `--no-llm` to skip it (you'll get `VersionChangelog` objects with `raw_notes` but empty `rules`).
-
----
 
 ## Downgrade Support
 
@@ -668,14 +629,6 @@ cd generated_migrator
 uv pip install -e .
 ```
 Then make sure your venv is active when you run it.
-
-### LLM parsing not working
-
-Set your OpenAI API key:
-```bash
-export OPENAI_API_KEY=sk-...
-```
-Or pass `--no-llm` to skip LLM and only process JSON changelogs.
 
 ### Migration produces no changes
 

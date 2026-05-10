@@ -73,25 +73,7 @@ class TestChangelogParser:
         assert changelogs[0].rules[0].old_name == "foo"
         assert changelogs[0].rules[0].new_name == "bar"
 
-    def test_parse_markdown_changelog(self):
-        md = """# Changelog
 
-## 2.0.0 - 2024-01-01
-
-### Breaking Changes
-
-- Renamed foo to bar
-- Removed legacy mode
-
-## 1.5.0 - 2023-12-01
-
-- Added new feature
-"""
-        parser = ChangelogParser()
-        changelogs = parser.parse(md, fmt="auto")
-        assert len(changelogs) == 2
-        assert changelogs[0].version == "2.0.0"
-        assert "foo" in changelogs[0].raw_notes
 
     def test_version_sorting(self):
         from core.changelog_parser import _version_key

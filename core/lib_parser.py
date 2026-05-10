@@ -1,6 +1,6 @@
 """
 LLM Integration - Uses NVIDIA/Gemma model to:
-1. Parse unstructured markdown changelogs into structured MigrationRule objects
+1. Parse unstructured changelogs into structured MigrationRule objects
 2. Handle CUSTOM_TRANSFORM rules that can't be expressed as predefined patterns
 3. Suggest which transformer function to call based on changelog text
 """
@@ -43,14 +43,14 @@ Optional fields based on change_type:
 
 IMPORTANT:
 - Only extract BREAKING CHANGES and deprecations, not new features.
-- Output ONLY the JSON array, no markdown, no explanation.
+- Output ONLY the JSON array, no explanation.
 - If no migration rules are needed, output: []
 """
 
 
 class LLMParser:
     """
-    Uses the NVIDIA-hosted Gemma model to parse markdown changelogs
+    Uses the NVIDIA-hosted Gemma model to parse changelogs
     and extract structured MigrationRule objects.
     """
 
@@ -158,7 +158,7 @@ If no changes are needed, output the original code unchanged.
                 result.append(chunk.choices[0].delta.content)
 
         text = "".join(result)
-        # Strip markdown code fences if present
+        # Strip code fences if present
         text = re.sub(r"```python\n?", "", text)
         text = re.sub(r"```\n?", "", text)
         return text.strip()

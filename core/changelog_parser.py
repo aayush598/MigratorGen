@@ -119,17 +119,11 @@ class VersionChangelog:
 
 class ChangelogParser:
     """
-    Parses changelog files (Markdown or JSON) into structured MigrationRule objects.
+    Parses changelog files (JSON) into structured MigrationRule objects.
 
-    Supports two formats:
-    1. Structured JSON changelog (recommended for precision)
-    2. Markdown changelog (uses LLM assistance for extraction)
+    Supports:
+    1. Structured JSON changelog
     """
-
-    VERSION_PATTERN = re.compile(
-        r"^#{1,3}\s+(?:v|version\s+)?(\d+\.\d+(?:\.\d+)?(?:[a-z]\d*)?)\s*(?:[-–]\s*(.+))?$",
-        re.IGNORECASE | re.MULTILINE,
-    )
 
     def parse_json(self, content: str) -> List[VersionChangelog]:
         """Parse a structured JSON changelog."""
@@ -156,49 +150,6 @@ class ChangelogParser:
 
         return changelogs
 
-    def parse_markdown(self, content: str) -> List[VersionChangelog]:
-        """
-        Parse a Markdown CHANGELOG into version sections.
-        Returns VersionChangelog objects with raw_notes populated.
-        Rules will be extracted by the LLM layer.
-        """
-        changelogs = []
-        sections = self._split_by_version(content)
-
-        for version, date, body in sections:
-            vc = VersionChangelog(
-                version=version,
-                release_date=date,
-                raw_notes=body.strip(),
-            )
-            changelogs.append(vc)
-
-        return changelogs
-
-    def _split_by_version(self, content: str):
-        """Split markdown content into (version, date, body) tuples."""
-        lines = content.splitlines(keepends=True)
-        sections = []
-        current_version = None
-        current_date = None
-        current_lines = []
-
-        for line in lines:
-            match = self.VERSION_PATTERN.match(line.strip())
-            if match:
-                if current_version:
-                    sections.append((current_version, current_date, "".join(current_lines)))
-                current_version = match.group(1)
-                current_date = match.group(2)
-                current_lines = []
-            else:
-                current_lines.append(line)
-
-        if current_version:
-            sections.append((current_version, current_date, "".join(current_lines)))
-
-        return sections
-
     def parse(self, content: str, fmt: str = "auto") -> List[VersionChangelog]:
         """Auto-detect format and parse changelog."""
         if fmt == "json" or (fmt == "auto" and content.strip().startswith("{")):
@@ -206,7 +157,7 @@ class ChangelogParser:
         elif fmt == "json_list" or (fmt == "auto" and content.strip().startswith("[")):
             return self.parse_json(content)
         else:
-            return self.parse_markdown(content)
+            raise ValueError(f"Unsupported format or could not auto-detect JSON: {fmt}")
 
     def merge_changelogs(
         self, old: List[VersionChangelog], new: List[VersionChangelog]
