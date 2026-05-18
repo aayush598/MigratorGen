@@ -27,11 +27,13 @@ import re
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from core.changelog_parser import ChangelogParser, MigrationRule, ChangeType
+import libcst as cst
+from core.changelog_parser import ChangelogParser, MigrationRule, ChangeType, VersionChangelog, MigrationFile
 from core.migration_engine import TransactionalMigrationEngine
 from core.validation import RuleValidator, IdempotencyChecker
 from core.diff_analyzer import GitDiffAnalyzer, ChangelogToRulesConverter, generate_from_git_diff, generate_from_changelog
 from core.version_resolver import VersionResolver
+from core.symbol_resolver import SymbolResolver
 
 from typing import Optional, List, Dict, Any, Literal, Tuple
 from datetime import datetime

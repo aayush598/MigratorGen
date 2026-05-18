@@ -1,0 +1,61 @@
+name: Feature Request
+description: Suggest a new feature or improvement for MigratorGen
+title: '[Feature] '
+labels: ['enhancement']
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Feature Request
+        Please describe the feature you'd like to see.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Feature Description
+      placeholder: A clear and concise description of the feature.
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      placeholder: What problem does this feature solve?
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      placeholder: Describe your proposed solution.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      placeholder: Any alternative solutions you've considered?
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      placeholder: Add any other context or mockups about the feature request.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: requirements
+    attributes:
+      label: Requirements
+      options:
+        - label: This feature would require documentation changes
+        - label: This feature would require tests
+        - label: This feature would introduce breaking changes

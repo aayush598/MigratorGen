@@ -39,20 +39,20 @@
 # 1. Setup
 git clone <repo-url>
 cd migrator_platform
-uv venv .venv && source .venv/bin/activate
-uv pip install -r requirements.txt
+make dev          # Creates .venv, installs dependencies, sets up pre-commit
 
 # 2. Run demo
 python demo_all_features.py
 
 # 3. Run tests
-python -m pytest tests/test_platform.py -v
+make test         # 186 test cases (131 core + 55 shared)
+make lint         # ruff linter + formatter
 
 # 4. Create a migrator
 python cli/cli.py create --changelog examples/mylib_changelog.json --library mylib
 
 # 5. Start REST API
-python api/server.py
+make docker-up && curl http://localhost:8000/health
 
 # 6. Start MCP server
 python mcp/server.py
@@ -116,6 +116,76 @@ migrator_platform/
 │   ├── transformers.py       # LibCST transformers (16 base types)
 │   ├── transformers_advanced.py  # 7 advanced transformers (async, context, split, etc.)
 │   ├── validation.py        # RuleValidator, IdempotencyChecker, RuleDependencyGraph
+│   ├── symbol_resolver.py    # SymbolResolver, ImportGraph, ConfidenceScorer
+│   ├── diff_analyzer.py      # GitDiffAnalyzer, ChangelogToRulesConverter
+│   ├── llm_engine.py         # LLMSuggestionEngine (Anthropic/OpenAI)
+│   └── parallel_engine.py    # ParallelMigrationEngine, ASTCache, DiskCache
+├── mcp/
+│   └── server.py             # MCP server (10 AI agent tools)
+├── libs/
+│   ├── shared/src/shared/    # Shared utilities (logging, exceptions, metrics, middleware, utils, database, cache)
+│   └── sdk/src/migratorsdk/  # Python SDK client (async/sync MigratorClient)
+├── services/
+│   ├── api/app.py            # FastAPI service with async file processing, WebSocket streaming
+│   ├── migration/app.py      # Migration service with progress tracking
+│   └── tasks/                # Celery task definitions (migration_tasks.py, celery_app.py)
+├── examples/
+│   ├── mylib_changelog.json    # Example with 12 rules across 4 versions
+│   └── sample_user_code.py     # Target Python file to migrate
+├── migration_packs/
+│   ├── pydantic.json       # 20 rules for Pydantic v1→v2 migration
+│   ├── fastapi.json        # 4 rules for FastAPI migration
+│   └── httpx.json          # 3 rules for httpx migration
+├── tests/
+│   ├── test_platform.py    # 131 test cases covering core modules
+│   └── test_shared.py      # 55 test cases covering libs/shared
+├── .github/workflows/      # GitHub Actions CI (release, deploy, security)
+├── Makefile               # Development shortcuts (dev, test, lint, docker-*, celery, flower)
+├── CONTRIBUTING.md         # Contribution guidelines
+├── CHANGELOG.md            # Project changelog
+├── LICENSE                 # MIT license
+├── .env.example            # Environment variables template
+├── .env.test               # Test environment variables
+└── README.md
+```
+
+## libs/shared — Shared Utilities
+
+Reusable components across all services (`libs/shared/src/shared/`):
+
+| Module | Description |
+|---|---|
+| `logging.py` | Structured JSON logging with request IDs, log levels, service name |
+| `exceptions.py` | RFC 7807 Problem Details exceptions + global exception handler + Sentry |
+| `metrics.py` | Prometheus metrics (requests, migrations, cache, LLM calls, Celery) |
+| `middleware.py` | CORS, rate limiting, request ID injection, security headers, compression |
+| `utils.py` | File validation, hashing, retry with backoff, datetime, slugify, truncate |
+| `database.py` | Async SQLAlchemy models (MigrationJob, MigrationSession) with connection pooling |
+| `cache.py` | Async Redis cache manager with JSON serialization and TTL |
+
+## libs/sdk — Python SDK
+
+`MigratorClient` (async) and `SyncMigratorClient` for programmatic API access:
+
+```python
+from migratorsdk.client import MigratorClient
+
+client = MigratorClient(base_url="http://localhost:8000")
+result = await client.migrate(code, rules, from_version, to_version)
+```
+migrator_platform/
+├── api/
+│   └── server.py              # FastAPI REST API (15 endpoints)
+├── cli/
+│   └── cli.py                # Main CLI (create, run, preview, rules, interactive)
+├── core/
+│   ├── changelog_parser.py   # MigrationRule, ChangeType, RuleWhenCondition, VersionChangelog
+│   ├── version_resolver.py   # VersionResolver, MigrationPath
+│   ├── migration_engine.py   # TransactionalMigrationEngine, MigrationReport
+│   ├── migrator_generator.py # Generates standalone migrator package
+│   ├── transformers.py       # LibCST transformers (16 base types)
+│   ├── transformers_advanced.py  # 7 advanced transformers (async, context, split, etc.)
+│   ├── validation.py        # RuleValidator, IdempotencyChecker, RuleDependencyGraph
 │   ├── symbol_resolver.py   # SymbolResolver, ImportGraph, ConfidenceScorer
 │   ├── diff_analyzer.py     # GitDiffAnalyzer, ChangelogToRulesConverter
 │   ├── llm_engine.py        # LLMSuggestionEngine (Anthropic/OpenAI)
@@ -143,17 +213,17 @@ migrator_platform/
 
 ## Installation
 
-**Python 3.9+ required.**
+**Python 3.10+ required.**
 
 ```bash
 # Clone and enter directory
 cd migrator_platform
 
-# Create virtual environment
-uv venv .venv
-source .venv/bin/activate
+# Create virtual environment and install dependencies
+make dev
 
-# Install dependencies
+# Or manually:
+uv venv .venv && source .venv/bin/activate
 uv pip install -r requirements.txt
 ```
 
@@ -615,16 +685,16 @@ python cli/cli.py create \
 
 ```bash
 # Run full test suite
-python -m pytest tests/test_platform.py -v
+python -m pytest tests/ -v
 
 # Run specific test class
 python -m pytest tests/test_platform.py::TestChangelogParserBasics -v
 
-# Run with coverage
-python -m pytest tests/ -v --tb=short
+# Run shared library tests
+python -m pytest tests/test_shared.py -v
 ```
 
-**131 test cases** covering:
+**186 test cases** total (131 core + 55 shared libs):
 - Changelog parsing & serialization
 - Version resolution & path building
 - All 16 base transformers + 7 advanced transformers
@@ -647,6 +717,7 @@ python -m pytest tests/ -v --tb=short
 - AST and disk caching
 - Full end-to-end pipeline
 - Edge cases (empty code, comments, multiline strings)
+- libs/shared: logging, exceptions, metrics, utils, database models, cache
 
 ---
 

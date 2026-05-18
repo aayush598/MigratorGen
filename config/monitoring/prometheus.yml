@@ -1,0 +1,69 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'migrator-platform'
+    environment: 'production'
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - 'alertmanager:9093'
+
+rule_files:
+  - '/etc/prometheus/rules/*.yml'
+  - '/etc/prometheus/alerts/*.yml'
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'
+
+  - job_name: 'migration-api'
+    static_configs:
+      - targets: ['migration-api:8000']
+        labels:
+          service: 'api'
+          app: 'migration-api'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  - job_name: 'migration-worker'
+    static_configs:
+      - targets: ['migration-worker:8001']
+        labels:
+          service: 'worker'
+          app: 'migration-worker'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+        labels:
+          service: 'redis'
+    scrape_interval: 30s
+
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+        labels:
+          service: 'postgres'
+    scrape_interval: 30s
+
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx-exporter:9113']
+        labels:
+          service: 'nginx'
+    scrape_interval: 30s
+
+  - job_name: 'celery'
+    static_configs:
+      - targets: ['celery-exporter:9808']
+        labels:
+          service: 'celery'
+    scrape_interval: 30s

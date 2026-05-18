@@ -1,0 +1,632 @@
+{
+  "$defs": {
+    "ChangeType": {
+      "enum": [
+        "rename_function",
+        "rename_class",
+        "rename_attribute",
+        "rename_import",
+        "add_argument",
+        "remove_argument",
+        "change_argument_default",
+        "reorder_arguments",
+        "deprecate_function",
+        "remove_function",
+        "remove_class",
+        "change_return_type",
+        "replace_with_property",
+        "move_to_module",
+        "wrap_in_context_manager",
+        "add_decorator",
+        "remove_decorator",
+        "rename_argument",
+        "sync_to_async",
+        "class_split",
+        "module_split",
+        "enum_migration",
+        "dataclass_field_change"
+      ],
+      "title": "ChangeType",
+      "type": "string"
+    },
+    "MigrationRule": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "change_type": {
+          "$ref": "#/$defs/ChangeType"
+        },
+        "version_introduced": {
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "title": "Version Introduced",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "old_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Old Name"
+        },
+        "new_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "New Name"
+        },
+        "function_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Function Name"
+        },
+        "argument_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Argument Name"
+        },
+        "new_argument_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "New Argument Name"
+        },
+        "default_value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Default Value"
+        },
+        "argument_position": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Argument Position"
+        },
+        "new_argument_value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "New Argument Value"
+        },
+        "new_order": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "New Order"
+        },
+        "old_module": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Old Module"
+        },
+        "new_module": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "New Module"
+        },
+        "replacement": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Replacement"
+        },
+        "removal_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Removal Version"
+        },
+        "decorator_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Decorator Name"
+        },
+        "source_module": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Module"
+        },
+        "target_module": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Module"
+        },
+        "extra": {
+          "additionalProperties": true,
+          "title": "Extra",
+          "type": "object"
+        },
+        "when": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RuleWhenCondition"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "priority": {
+          "default": 100,
+          "maximum": 1000,
+          "minimum": 0,
+          "title": "Priority",
+          "type": "integer"
+        },
+        "depends_on": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Depends On",
+          "type": "array"
+        },
+        "conflicts_with": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Conflicts With",
+          "type": "array"
+        },
+        "run_after": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Run After",
+          "type": "array"
+        },
+        "reversible": {
+          "default": true,
+          "title": "Reversible",
+          "type": "boolean"
+        },
+        "idempotent_safe": {
+          "default": true,
+          "title": "Idempotent Safe",
+          "type": "boolean"
+        },
+        "inverse_rule_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Inverse Rule Id"
+        },
+        "confidence_hint": {
+          "default": "high",
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ],
+          "title": "Confidence Hint",
+          "type": "string"
+        },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Tags",
+          "type": "array"
+        },
+        "safety": {
+          "default": "safe",
+          "enum": [
+            "safe",
+            "review_required",
+            "risky"
+          ],
+          "title": "Safety",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "change_type",
+        "version_introduced",
+        "description"
+      ],
+      "title": "MigrationRule",
+      "type": "object"
+    },
+    "RuleWhenCondition": {
+      "additionalProperties": false,
+      "properties": {
+        "imported_from": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Imported From"
+        },
+        "not_imported_from": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Not Imported From"
+        },
+        "inside_class": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Inside Class"
+        },
+        "outside_class": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Outside Class"
+        },
+        "inside_function": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Inside Function"
+        },
+        "python_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Python Version"
+        },
+        "min_python_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min Python Version"
+        },
+        "max_python_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Python Version"
+        },
+        "has_decorator": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Has Decorator"
+        },
+        "lacks_decorator": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lacks Decorator"
+        },
+        "returns_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Returns Type"
+        },
+        "called_from_module": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Called From Module"
+        },
+        "called_as_method": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Called As Method"
+        },
+        "custom_condition": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Custom Condition"
+        }
+      },
+      "title": "RuleWhenCondition",
+      "type": "object"
+    },
+    "VersionChangelog": {
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "title": "Version",
+          "type": "string"
+        },
+        "release_date": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Release Date"
+        },
+        "rules": {
+          "items": {
+            "$ref": "#/$defs/MigrationRule"
+          },
+          "title": "Rules",
+          "type": "array"
+        },
+        "raw_notes": {
+          "default": "",
+          "title": "Raw Notes",
+          "type": "string"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        }
+      },
+      "required": [
+        "version"
+      ],
+      "title": "VersionChangelog",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "library": {
+      "title": "Library",
+      "type": "string"
+    },
+    "schema_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Schema Version"
+    },
+    "generated": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Generated"
+    },
+    "versions": {
+      "items": {
+        "$ref": "#/$defs/VersionChangelog"
+      },
+      "title": "Versions",
+      "type": "array"
+    }
+  },
+  "required": [
+    "library"
+  ],
+  "title": "MigrationFile",
+  "type": "object"
+}
