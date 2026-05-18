@@ -7,6 +7,7 @@
             "notes": "Minor improvements and deprecations",
             "rules": [
                 {
+                    "id": "MYLIB-1.1-001",
                     "change_type": "deprecate_function",
                     "version_introduced": "1.1.0",
                     "description": "fetch_data() is deprecated, use get_data() instead",
@@ -21,6 +22,7 @@
             "notes": "Major breaking release",
             "rules": [
                 {
+                    "id": "MYLIB-2.0-001",
                     "change_type": "rename_function",
                     "version_introduced": "2.0.0",
                     "description": "Renamed connect() to create_connection()",
@@ -28,6 +30,7 @@
                     "new_name": "create_connection"
                 },
                 {
+                    "id": "MYLIB-2.0-002",
                     "change_type": "rename_class",
                     "version_introduced": "2.0.0",
                     "description": "Client class renamed to APIClient",
@@ -35,6 +38,7 @@
                     "new_name": "APIClient"
                 },
                 {
+                    "id": "MYLIB-2.0-003",
                     "change_type": "rename_import",
                     "version_introduced": "2.0.0",
                     "description": "Client moved to new module",
@@ -44,6 +48,7 @@
                     "new_module": "mylib.client"
                 },
                 {
+                    "id": "MYLIB-2.0-004",
                     "change_type": "add_argument",
                     "version_introduced": "2.0.0",
                     "description": "Added timeout parameter to create_connection()",
@@ -52,6 +57,7 @@
                     "default_value": "30"
                 },
                 {
+                    "id": "MYLIB-2.0-005",
                     "change_type": "rename_attribute",
                     "version_introduced": "2.0.0",
                     "description": "Renamed .url attribute to .base_url",
@@ -66,6 +72,7 @@
             "notes": "Additional improvements",
             "rules": [
                 {
+                    "id": "MYLIB-2.1-001",
                     "change_type": "remove_argument",
                     "version_introduced": "2.1.0",
                     "description": "Removed deprecated verbose argument from send_request()",
@@ -73,6 +80,7 @@
                     "argument_name": "verbose"
                 },
                 {
+                    "id": "MYLIB-2.1-002",
                     "change_type": "move_to_module",
                     "version_introduced": "2.1.0",
                     "description": "Moved Formatter class to mylib.utils",
@@ -81,6 +89,7 @@
                     "target_module": "mylib.utils"
                 },
                 {
+                    "id": "MYLIB-2.1-003",
                     "change_type": "replace_with_property",
                     "version_introduced": "2.1.0",
                     "description": "get_name() replaced by .name property",
@@ -95,6 +104,7 @@
             "notes": "Full rewrite",
             "rules": [
                 {
+                    "id": "MYLIB-3.0-001",
                     "change_type": "rename_function",
                     "version_introduced": "3.0.0",
                     "description": "send_request() renamed to request()",
@@ -102,6 +112,7 @@
                     "new_name": "request"
                 },
                 {
+                    "id": "MYLIB-3.0-002",
                     "change_type": "add_decorator",
                     "version_introduced": "3.0.0",
                     "description": "All handler functions must be decorated with @handler",
@@ -109,6 +120,7 @@
                     "decorator_name": "handler"
                 },
                 {
+                    "id": "MYLIB-3.0-003",
                     "change_type": "change_argument_default",
                     "version_introduced": "3.0.0",
                     "description": "Default timeout changed from 30 to 60",

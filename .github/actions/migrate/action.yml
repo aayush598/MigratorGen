@@ -1,0 +1,92 @@
+name: Auto-Migrate Pull Request
+description: GitHub Action to automatically run migrations on pull requests
+
+inputs:
+  rules-file:
+    description: Path to migration rules JSON file
+    required: true
+    default: migration_rules.json
+  from-version:
+    description: Source version
+    required: true
+  to-version:
+    description: Target version
+    required: true
+  dry-run:
+    description: Run in dry-run mode
+    required: false
+    default: "false"
+  token:
+    description: GitHub token for commenting
+    required: false
+  exclude-patterns:
+    description: Patterns to exclude (comma-separated)
+    required: false
+    default: "**/test_*.py,**/__pycache__/**"
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    - name: Install MigratorGen
+      shell: bash
+      run: pip install -e .
+
+    - name: Run migration
+      id: migrate
+      shell: bash
+      run: |
+        set -e
+        echo "Running migration: ${{ inputs.from-version }} -> ${{ inputs.to-version }}"
+        echo "Rules: ${{ inputs.rules-file }}"
+
+        mkdir -p .migration_backup
+
+        python -m cli.cli run . \
+          --rules "${{ inputs.rules-file }}" \
+          --from "${{ inputs.from-version }}" \
+          --to "${{ inputs.to-version }}" \
+          ${{ inputs.dry-run == 'true' && '--dry-run' || '' }} \
+          --no-backup 2>&1 | tee migration.log || true
+
+        echo "migration_exit_code=$?" >> $GITHUB_OUTPUT
+
+    - name: Report results
+      shell: bash
+      if: always()
+      run: |
+        echo "## Migration Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "From: ${{ inputs.from-version }} -> To: ${{ inputs.to-version }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        if grep -q "No changes needed" migration.log 2>/dev/null; then
+          echo "No migration changes were needed." >> $GITHUB_STEP_SUMMARY
+        elif grep -q "modified" migration.log 2>/dev/null; then
+          FILES=$(grep "modified" migration.log | head -1 || echo "files migrated")
+          echo "Migration completed: $FILES" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "Migration encountered issues. Check logs." >> $GITHUB_STEP_SUMMARY
+        fi
+
+        if [ -f migration.log ]; then
+          echo "--- Migration Log ---" >> $GITHUB_STEP_SUMMARY
+          tail -20 migration.log >> $GITHUB_STEP_SUMMARY || true
+        fi
+
+        echo "### Migration Log" >> $GITHUB_STEP_SUMMARY
+        if [ -f migration.log ]; then
+          cat migration.log >> $GITHUB_STEP_SUMMARY 2>/dev/null || echo "(log not available)" >> $GITHUB_STEP_SUMMARY
+        fi
+
+outputs:
+  modified-files:
+    description: Number of files modified
+    value: ${{ steps.migrate.outputs.files_modified || '0' }}
+  migration-log:
+    description: Full migration log
+    value: ${{ steps.migrate.outputs.log || '' }}

@@ -7,7 +7,7 @@ import ast
 import re
 import json
 from enum import Enum
-from typing import List, Optional, Dict, Any, Literal
+from typing import List, Optional, Dict, Any, Literal, Union, Tuple
 from pydantic import BaseModel, ConfigDict, Field, model_validator, field_validator
 
 
@@ -29,6 +29,31 @@ class ChangeType(str, Enum):
     WRAP_IN_CONTEXT_MANAGER = "wrap_in_context_manager"
     ADD_DECORATOR = "add_decorator"
     REMOVE_DECORATOR = "remove_decorator"
+    RENAME_ARGUMENT = "rename_argument"
+    SYNC_TO_ASYNC = "sync_to_async"
+    CLASS_SPLIT = "class_split"
+    MODULE_SPLIT = "module_split"
+    ENUM_MIGRATION = "enum_migration"
+    DATACLASS_FIELD_CHANGE = "dataclass_field_change"
+
+
+class RuleWhenCondition(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    imported_from: Optional[str] = None
+    not_imported_from: Optional[str] = None
+    inside_class: Optional[Union[str, List[str]]] = None
+    outside_class: Optional[bool] = None
+    inside_function: Optional[Union[str, List[str]]] = None
+    python_version: Optional[str] = None
+    min_python_version: Optional[str] = None
+    max_python_version: Optional[str] = None
+    has_decorator: Optional[str] = None
+    lacks_decorator: Optional[str] = None
+    returns_type: Optional[str] = None
+    called_from_module: Optional[str] = None
+    called_as_method: Optional[bool] = None
+    custom_condition: Optional[str] = None
 
 
 class MigrationRule(BaseModel):
@@ -56,77 +81,46 @@ class MigrationRule(BaseModel):
     source_module: Optional[str] = None
     target_module: Optional[str] = None
     extra: Dict[str, Any] = Field(default_factory=dict)
-    
+
+    when: Optional[RuleWhenCondition] = None
+    priority: int = Field(default=100, ge=0, le=1000)
+    depends_on: List[str] = Field(default_factory=list)
+    conflicts_with: List[str] = Field(default_factory=list)
+    run_after: List[str] = Field(default_factory=list)
+    reversible: bool = True
+    idempotent_safe: bool = True
+    inverse_rule_id: Optional[str] = None
+
+    confidence_hint: Literal["high", "medium", "low"] = "high"
     tags: List[str] = Field(default_factory=list)
     safety: Literal["safe", "review_required", "risky"] = "safe"
 
-    @field_validator("default_value")
-    @classmethod
-    def validate_python_expression(cls, v):
-        if v is not None:
-            try:
-                ast.parse(v, mode='eval')
-            except Exception as e:
-                raise ValueError(f"Invalid Python expression in default_value: {v}")
-        return v
-
     @model_validator(mode="after")
-    def validate_semantics(self):
-        ct = self.change_type
-        missing = []
-        
-        if ct == ChangeType.RENAME_FUNCTION:
-            if not self.old_name: missing.append("old_name")
-            if not self.new_name: missing.append("new_name")
-        elif ct == ChangeType.RENAME_CLASS:
-            if not self.old_name: missing.append("old_name")
-            if not self.new_name: missing.append("new_name")
-        elif ct == ChangeType.RENAME_ATTRIBUTE:
-            if not self.old_name: missing.append("old_name")
-            if not self.new_name: missing.append("new_name")
-        elif ct == ChangeType.RENAME_IMPORT:
-            if not self.old_module: missing.append("old_module")
-            if not self.new_module: missing.append("new_module")
-            if not self.old_name: missing.append("old_name")
-            if not self.new_name: missing.append("new_name")
-        elif ct == ChangeType.ADD_ARGUMENT:
-            if not self.function_name: missing.append("function_name")
-            if not self.argument_name: missing.append("argument_name")
-        elif ct == ChangeType.REMOVE_ARGUMENT:
-            if not self.function_name: missing.append("function_name")
-            if not self.argument_name: missing.append("argument_name")
-        elif ct == ChangeType.CHANGE_ARGUMENT_DEFAULT:
-            if not self.argument_name: missing.append("argument_name")
-            if self.default_value is None: missing.append("default_value")
-        elif ct == ChangeType.REORDER_ARGUMENTS:
-            if not self.function_name: missing.append("function_name")
-            if not self.new_order: missing.append("new_order")
-        elif ct == ChangeType.DEPRECATE_FUNCTION:
-            if not self.old_name: missing.append("old_name")
-        elif ct == ChangeType.MOVE_TO_MODULE:
-            if not self.old_name: missing.append("old_name")
-            if not self.source_module: missing.append("source_module")
-            if not self.target_module: missing.append("target_module")
-        elif ct == ChangeType.ADD_DECORATOR:
-            if not self.function_name: missing.append("function_name")
-            if not self.decorator_name: missing.append("decorator_name")
-        elif ct == ChangeType.REMOVE_DECORATOR:
-            if not self.function_name: missing.append("function_name")
-            if not self.decorator_name: missing.append("decorator_name")
-        elif ct == ChangeType.REPLACE_WITH_PROPERTY:
-            if not self.old_name: missing.append("old_name")
-            if not self.new_name: missing.append("new_name")
-            
-        if missing:
-            raise ValueError(f"Rule {self.id}:\n{ct.value} requires:\n- " + "\n- ".join(missing))
-            
+    def check_required_fields(self):
+        if self.change_type == ChangeType.RENAME_FUNCTION:
+            if not self.old_name or not self.new_name:
+                raise ValueError("Missing required field for rename_function: old_name and new_name are required")
+        if self.change_type == ChangeType.ADD_ARGUMENT:
+            if not self.function_name or not self.argument_name:
+                raise ValueError("Missing required field for add_argument: function_name and argument_name are required")
+        if self.change_type == ChangeType.CHANGE_ARGUMENT_DEFAULT:
+            if not self.argument_name or not self.default_value:
+                raise ValueError("Missing required field for change_argument_default: argument_name and default_value are required")
+        if self.default_value:
+            try:
+                ast.parse(self.default_value, mode="eval")
+            except SyntaxError as e:
+                raise ValueError(f"Invalid Python expression in default_value: {self.default_value}") from e
         return self
 
     def to_dict(self) -> Dict[str, Any]:
-        return self.model_dump(exclude_none=True)
+        d = self.model_dump(exclude_none=True)
+        return d
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "MigrationRule":
+        if "when" in data and data["when"] is not None:
+            data["when"] = RuleWhenCondition(**data["when"])
         return cls(**data)
 
 
@@ -138,6 +132,17 @@ class VersionChangelog(BaseModel):
     rules: List[MigrationRule] = Field(default_factory=list)
     raw_notes: str = ""
     notes: Optional[str] = None
+
+    @model_validator(mode="after")
+    def check_conflicting_renames(self):
+        seen_renames: Dict[str, str] = {}
+        for rule in self.rules:
+            if rule.change_type in (ChangeType.RENAME_FUNCTION, ChangeType.RENAME_CLASS, ChangeType.RENAME_ATTRIBUTE):
+                if rule.old_name not in seen_renames:
+                    seen_renames[rule.old_name] = rule.id
+                else:
+                    raise ValueError(f"Conflicting rename rule: {rule.old_name} appears twice with different targets: '{seen_renames[rule.old_name]}' vs '{rule.id}'")
+        return self
 
     def to_dict(self) -> Dict[str, Any]:
         return self.model_dump(exclude_none=True)
@@ -152,23 +157,15 @@ class MigrationFile(BaseModel):
     versions: List[VersionChangelog] = Field(default_factory=list)
 
     @model_validator(mode="after")
-    def validate_unique_rules(self):
-        seen_ids = set()
-        seen_renames = {}
-        for vc in self.versions:
-            for rule in vc.rules:
-                if rule.id in seen_ids:
-                    raise ValueError(f"Duplicate rule ID found: {rule.id}")
-                seen_ids.add(rule.id)
-                
-                # Check for conflicting renames
-                if rule.change_type in (ChangeType.RENAME_FUNCTION, ChangeType.RENAME_CLASS, ChangeType.RENAME_ATTRIBUTE):
-                    key = (rule.change_type, rule.old_name)
-                    if key in seen_renames and seen_renames[key] != rule.new_name:
-                        raise ValueError(f"Conflicting rename rule for {rule.old_name}: already renamed to {seen_renames[key]}, but found rename to {rule.new_name}")
-                    seen_renames[key] = rule.new_name
-                    
+    def check_duplicate_ids(self):
+        all_rules = [r for vc in self.versions for r in vc.rules]
+        seen_ids: Dict[str, str] = {}
+        for rule in all_rules:
+            if rule.id in seen_ids:
+                raise ValueError(f"Duplicate rule ID: {rule.id} (first seen in {seen_ids[rule.id]})")
+            seen_ids[rule.id] = rule.id
         return self
+
 
 class ChangelogParser:
     """
@@ -178,13 +175,23 @@ class ChangelogParser:
     def parse_json(self, content: str) -> List[VersionChangelog]:
         """Parse a structured JSON changelog."""
         data = json.loads(content)
-        
+
         if isinstance(data, list):
             versions = [VersionChangelog(**v) for v in data]
             mf = MigrationFile(library="unknown", versions=versions)
-            return mf.versions
-            
-        mf = MigrationFile(**data)
+        else:
+            mf = MigrationFile(**data)
+
+        rules = []
+        for vc in mf.versions:
+            rules.extend(vc.rules)
+
+        from .validation import RuleValidator
+        report = RuleValidator().validate_rules(rules)
+        if not report.valid:
+            errors_str = "\n".join([f"- [Rule {e.rule_id}]: {e.message}" for e in report.errors])
+            raise ValueError(f"Rule Capability Validation Failed:\n{errors_str}")
+
         return mf.versions
 
     def parse(self, content: str, fmt: str = "auto") -> List[VersionChangelog]:

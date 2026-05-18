@@ -1,0 +1,46 @@
+{
+  "library": "httpx",
+  "description": "Migration rules for HTTPX version upgrades",
+  "versions": [
+    {
+      "version": "0.24.0",
+      "release_date": "2023-05-01",
+      "notes": "HTTPX 0.24+ has breaking changes",
+      "rules": [
+        {
+          "id": "HTX-024-001",
+          "change_type": "remove_argument",
+          "version_introduced": "0.24.0",
+          "description": "Remove deprecated timeout parameter as positional",
+          "function_name": "Client",
+          "argument_name": "timeout",
+          "safety": "review_required",
+          "tags": ["httpx", "v2", "timeout"],
+          "reversible": false
+        },
+        {
+          "id": "HTX-024-002",
+          "change_type": "move_to_module",
+          "version_introduced": "0.24.0",
+          "description": "Moved URL to httpx.URL",
+          "old_name": "URL",
+          "source_module": "httpx",
+          "target_module": "httpx.URL",
+          "safety": "safe",
+          "tags": ["httpx", "v2", "url"]
+        },
+        {
+          "id": "HTX-024-003",
+          "change_type": "rename_function",
+          "version_introduced": "0.24.0",
+          "description": "client.stream() -> async with client.stream()",
+          "old_name": "stream",
+          "new_name": "stream",
+          "extra": {"note": "stream now requires async context manager"},
+          "safety": "review_required",
+          "tags": ["httpx", "v2", "async"]
+        }
+      ]
+    }
+  ]
+}

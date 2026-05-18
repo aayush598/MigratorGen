@@ -1,0 +1,59 @@
+{
+  "library": "fastapi",
+  "description": "Migration rules for FastAPI version upgrades",
+  "versions": [
+    {
+      "version": "0.100.0",
+      "release_date": "2023-07-01",
+      "notes": "FastAPI 0.100+ requires Pydantic V2",
+      "rules": [
+        {
+          "id": "FAI-100-001",
+          "change_type": "remove_argument",
+          "version_introduced": "0.100.0",
+          "description": "Remove response_class from @app.get",
+          "function_name": "get",
+          "argument_name": "response_class",
+          "safety": "review_required",
+          "tags": ["fastapi", "v2", "response"],
+          "reversible": false
+        },
+        {
+          "id": "FAI-100-002",
+          "change_type": "remove_argument",
+          "version_introduced": "0.100.0",
+          "description": "Remove deprecated background_tasks parameter",
+          "function_name": "get",
+          "argument_name": "background_tasks",
+          "safety": "review_required",
+          "tags": ["fastapi", "v2", "background"],
+          "reversible": false
+        },
+        {
+          "id": "FAI-100-003",
+          "change_type": "add_argument",
+          "version_introduced": "0.100.0",
+          "description": "Add responses parameter for OpenAPI documentation",
+          "function_name": "get",
+          "argument_name": "responses",
+          "default_value": "None",
+          "safety": "safe",
+          "tags": ["fastapi", "v2", "openapi"]
+        },
+        {
+          "id": "FAI-100-004",
+          "change_type": "remove_argument",
+          "version_introduced": "0.100.0",
+          "description": "Remove deprecated openapi_prefix",
+          "function_name": "get",
+          "argument_name": "openapi_prefix",
+          "safety": "review_required",
+          "tags": ["fastapi", "v2", "prefix"],
+          "reversible": false
+        }
+      ]
+    }
+  ],
+  "maintainer": "tiangolo",
+  "homepage": "https://fastapi.tiangolo.com/"
+}

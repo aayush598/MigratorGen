@@ -7,6 +7,7 @@ import libcst as cst
 from libcst import matchers as m
 from typing import Set, Dict, List, Optional, Sequence, Union
 from .changelog_parser import MigrationRule, ChangeType
+from . import transformers_advanced as adv
 
 
 # ---------------------------------------------------------------------------
@@ -495,6 +496,20 @@ TRANSFORMER_MAP = {
     ChangeType.ADD_DECORATOR: AddDecoratorTransformer,
     ChangeType.REMOVE_DECORATOR: RemoveDecoratorTransformer,
     ChangeType.REPLACE_WITH_PROPERTY: ReplaceWithPropertyTransformer,
+    ChangeType.RENAME_ARGUMENT: RenameArgumentTransformer,
+    **{
+        ct: getattr(adv, name)
+        for ct, name in [
+            (ChangeType.SYNC_TO_ASYNC, "SyncToAsyncTransformer"),
+            (ChangeType.WRAP_IN_CONTEXT_MANAGER, "WrapInContextManagerTransformer"),
+            (ChangeType.CLASS_SPLIT, "ClassSplitTransformer"),
+            (ChangeType.MODULE_SPLIT, "ModuleSplitTransformer"),
+            (ChangeType.CHANGE_RETURN_TYPE, "ChangeReturnTypeTransformer"),
+            (ChangeType.ENUM_MIGRATION, "EnumMigrationTransformer"),
+            (ChangeType.DATACLASS_FIELD_CHANGE, "DataclassFieldChangeTransformer"),
+        ]
+        if hasattr(adv, name)
+    },
 }
 
 

@@ -1,0 +1,237 @@
+{
+  "library": "pydantic",
+  "description": "Migration rules for Pydantic V1 to V2",
+  "versions": [
+    {
+      "version": "2.0.0",
+      "release_date": "2023-07-01",
+      "notes": "Pydantic V2 is a major rewrite with breaking changes",
+      "rules": [
+        {
+          "id": "PDY-V2-001",
+          "change_type": "rename_class",
+          "version_introduced": "2.0.0",
+          "description": "BaseModel renamed to model_config",
+          "old_name": "BaseModel",
+          "new_name": "BaseModel",
+          "extra": {"hint": "Use .model_config instead of Config class"},
+          "safety": "review_required",
+          "tags": ["pydantic", "v2", "basemodel"]
+        },
+        {
+          "id": "PDY-V2-002",
+          "change_type": "add_argument",
+          "version_introduced": "2.0.0",
+          "description": "validator -> field_validator",
+          "function_name": "validator",
+          "argument_name": "field",
+          "default_value": "None",
+          "extra": {"old_decorator": "validator", "new_decorator": "field_validator"},
+          "safety": "risky",
+          "tags": ["pydantic", "v2", "decorator"]
+        },
+        {
+          "id": "PDY-V2-003",
+          "change_type": "add_argument",
+          "version_introduced": "2.0.0",
+          "description": "root_validator -> root_field_validator",
+          "function_name": "root_validator",
+          "argument_name": "field",
+          "default_value": "None",
+          "extra": {"old_decorator": "root_validator", "new_decorator": "root_field_validator"},
+          "safety": "risky",
+          "tags": ["pydantic", "v2", "decorator"]
+        },
+        {
+          "id": "PDY-V2-004",
+          "change_type": "move_to_module",
+          "version_introduced": "2.0.0",
+          "description": "Extra FORBIDDEN -> exclude",
+          "old_name": "Extra",
+          "source_module": "pydantic",
+          "target_module": "pydantic",
+          "extra": {"old_value": "Extra.forbidden", "new_value": "exclude"},
+          "safety": "review_required",
+          "tags": ["pydantic", "v2", "config"]
+        },
+        {
+          "id": "PDY-V2-005",
+          "change_type": "move_to_module",
+          "version_introduced": "2.0.0",
+          "description": "orm_mode -> from_orm",
+          "old_name": "Config",
+          "source_module": "pydantic",
+          "target_module": "pydantic",
+          "extra": {"old_config": "orm_mode", "new_config": "from_attributes"},
+          "safety": "review_required",
+          "tags": ["pydantic", "v2", "config"]
+        },
+        {
+          "id": "PDY-V2-006",
+          "change_type": "remove_decorator",
+          "version_introduced": "2.0.0",
+          "description": "Remove deprecated @validator with pre=True",
+          "function_name": "*",
+          "decorator_name": "validator",
+          "safety": "risky",
+          "tags": ["pydantic", "v2", "decorator"],
+          "reversible": false
+        },
+        {
+          "id": "PDY-V2-007",
+          "change_type": "rename_function",
+          "version_introduced": "2.0.0",
+          "description": "dict() -> model_dump()",
+          "old_name": "dict",
+          "new_name": "model_dump",
+          "extra": {"method_on": "BaseModel"},
+          "safety": "review_required",
+          "tags": ["pydantic", "v2", "api"]
+        },
+        {
+          "id": "PDY-V2-008",
+          "change_type": "rename_function",
+          "version_introduced": "2.0.0",
+          "description": "json() -> model_dump_json()",
+          "old_name": "json",
+          "new_name": "model_dump_json",
+          "extra": {"method_on": "BaseModel"},
+          "safety": "review_required",
+          "tags": ["pydantic", "v2", "api"]
+        },
+        {
+          "id": "PDY-V2-009",
+          "change_type": "rename_function",
+          "version_introduced": "2.0.0",
+          "description": "construct() -> model_construct()",
+          "old_name": "construct",
+          "new_name": "model_construct",
+          "safety": "review_required",
+          "tags": ["pydantic", "v2", "api"]
+        },
+        {
+          "id": "PDY-V2-010",
+          "change_type": "rename_function",
+          "version_introduced": "2.0.0",
+          "description": "__fields_set__ -> model_fields_set",
+          "old_name": "__fields_set__",
+          "new_name": "model_fields_set",
+          "safety": "review_required",
+          "tags": ["pydantic", "v2", "api"]
+        },
+        {
+          "id": "PDY-V2-011",
+          "change_type": "change_argument_default",
+          "version_introduced": "2.0.0",
+          "description": "default values for missing optional fields",
+          "argument_name": "default",
+          "default_value": "None",
+          "function_name": "Field",
+          "safety": "review_required",
+          "tags": ["pydantic", "v2", "field"]
+        },
+        {
+          "id": "PDY-V2-012",
+          "change_type": "move_to_module",
+          "version_introduced": "2.0.0",
+          "description": "constr -> string_constraint",
+          "old_name": "constr",
+          "source_module": "pydantic",
+          "target_module": "pydantic",
+          "extra": {"note": "Use pydantic.types module instead"},
+          "safety": "review_required",
+          "tags": ["pydantic", "v2", "types"]
+        },
+        {
+          "id": "PDY-V2-013",
+          "change_type": "move_to_module",
+          "version_introduced": "2.0.0",
+          "description": "UUID -> string for Field type",
+          "old_name": "UUID",
+          "source_module": "pydantic",
+          "target_module": "pydantic",
+          "extra": {"note": "UUID is now in pydanticTypes module"},
+          "safety": "review_required",
+          "tags": ["pydantic", "v2", "types"]
+        },
+        {
+          "id": "PDY-V2-014",
+          "change_type": "rename_class",
+          "version_introduced": "2.0.0",
+          "description": "EmailStr -> EmailStr (same name, different behavior)",
+          "old_name": "EmailStr",
+          "new_name": "EmailStr",
+          "extra": {"note": "Import from pydantic instead of pydantic.EmailStr"},
+          "safety": "safe",
+          "tags": ["pydantic", "v2", "types"]
+        },
+        {
+          "id": "PDY-V2-015",
+          "change_type": "rename_function",
+          "version_introduced": "2.0.0",
+          "description": "parse_obj -> model_validate",
+          "old_name": "parse_obj",
+          "new_name": "model_validate",
+          "extra": {"function": "parse_obj", "replacement": "model_validate"},
+          "safety": "review_required",
+          "tags": ["pydantic", "v2", "api"]
+        },
+        {
+          "id": "PDY-V2-016",
+          "change_type": "rename_function",
+          "version_introduced": "2.0.0",
+          "description": "parse_file -> model_validate_json",
+          "old_name": "parse_file",
+          "new_name": "model_validate_json",
+          "safety": "review_required",
+          "tags": ["pydantic", "v2", "api"]
+        },
+        {
+          "id": "PDY-V2-017",
+          "change_type": "rename_function",
+          "version_introduced": "2.0.0",
+          "description": "parse_raw -> model_validate_json",
+          "old_name": "parse_raw",
+          "new_name": "model_validate_json",
+          "safety": "review_required",
+          "tags": ["pydantic", "v2", "api"]
+        },
+        {
+          "id": "PDY-V2-018",
+          "change_type": "rename_function",
+          "version_introduced": "2.0.0",
+          "description": "update_forward_refs -> model_rebuild",
+          "old_name": "update_forward_refs",
+          "new_name": "model_rebuild",
+          "safety": "review_required",
+          "tags": ["pydantic", "v2", "api"]
+        },
+        {
+          "id": "PDY-V2-019",
+          "change_type": "change_argument_default",
+          "version_introduced": "2.0.0",
+          "description": "Field(...) now requires default=None for optional",
+          "argument_name": "default",
+          "default_value": "None",
+          "function_name": "Field",
+          "safety": "review_required",
+          "tags": ["pydantic", "v2", "field"]
+        },
+        {
+          "id": "PDY-V2-020",
+          "change_type": "add_decorator",
+          "version_introduced": "2.0.0",
+          "description": "Config class deprecated - use model_config dict",
+          "function_name": "Config",
+          "decorator_name": "deprecated",
+          "safety": "review_required",
+          "tags": ["pydantic", "v2", "config"],
+          "reversible": false
+        }
+      ]
+    }
+  ],
+  "maintainer": "pydantic",
+  "homepage": "https://docs.pydantic.dev/2.0/",
+  "migration_guide": "https://docs.pydantic.dev/2.0/migration/"
+}

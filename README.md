@@ -1,64 +1,102 @@
-# MigratorGen — Code Migration Platform
+# MigratorGen — AI-Native Library Migration Platform
 
-> Automatically migrate Python code across library versions by parsing changelogs into structured, machine-executable rules.
-
-MigratorGen reads your library's changelog (JSON), extracts breaking changes, and produces a **standalone CLI migrator package** that users install once and run to upgrade (or downgrade) their codebase — fully automated, AST-accurate, with backup safety.
+> Automatically migrate Python code across library versions by parsing changelogs into structured, machine-executable rules. AST-accurate, transaction-safe, with REST API, MCP server, and parallel execution support.
 
 ---
 
 ## Table of Contents
 
-- [How It Works](#how-it-works)
+- [Quick Start](#quick-start)
+- [Architecture](#architecture)
 - [Project Structure](#project-structure)
-- [Requirements & Setup](#requirements--setup)
-- [Core Concepts](#core-concepts)
-  - [Changelog Formats](#changelog-formats)
-  - [Supported Change Types](#supported-change-types)
-- [Using the CLI](#using-the-cli)
-  - [create — Build a Migrator](#create--build-a-migrator)
-  - [update — Add New Versions](#update--add-new-versions)
-  - [run — Migrate Code](#run--migrate-code)
-  - [preview — Dry-run a File](#preview--dry-run-a-file)
-  - [rules — Inspect Rules](#rules--inspect-rules)
-  - [interactive — Manual Rule Builder](#interactive--manual-rule-builder)
-- [Using the Generated Migrator](#using-the-generated-migrator)
-  - [Installing the Generated Package](#installing-the-generated-package)
-  - [Generated CLI Commands](#generated-cli-commands)
-- [Python API (Programmatic Usage)](#python-api-programmatic-usage)
-- [Writing Your Changelog JSON](#writing-your-changelog-json)
-- [Downgrade Support](#downgrade-support)
-- [Backup Behaviour](#backup-behaviour)
+- [Installation](#installation)
+- [CLI Reference](#cli-reference)
+- [REST API](#rest-api)
+- [MCP Server (AI Agents)](#mcp-server-ai-agents)
+- [Python API](#python-api)
+- [Supported Change Types](#supported-change-types)
+- [Advanced Features](#advanced-features)
+  - [Rule Conditions (`when`)](#rule-conditions-when)
+  - [Rule Dependencies & Ordering](#rule-dependencies--ordering)
+  - [Transactional Engine & Rollback](#transactional-engine--rollback)
+  - [Validation & Safety](#validation--safety)
+  - [Semantic Symbol Resolution](#semantic-symbol-resolution)
+  - [Auto-Rule Generation from Git Diffs](#auto-rule-generation-from-git-diffs)
+  - [LLM-Powered Suggestions](#llm-powered-suggestions)
+  - [Parallel Migration](#parallel-migration)
+- [Migration Packs](#migration-packs)
+- [Writing Changelog JSON](#writing-changelog-json)
+- [Testing](#testing)
+- [Linting & Type Checking](#linting--type-checking)
 - [Examples](#examples)
 - [Troubleshooting](#troubleshooting)
 
 ---
 
-## How It Works
+## Quick Start
+
+```bash
+# 1. Setup
+git clone <repo-url>
+cd migrator_platform
+uv venv .venv && source .venv/bin/activate
+uv pip install -r requirements.txt
+
+# 2. Run demo
+python demo_all_features.py
+
+# 3. Run tests
+python -m pytest tests/test_platform.py -v
+
+# 4. Create a migrator
+python cli/cli.py create --changelog examples/mylib_changelog.json --library mylib
+
+# 5. Start REST API
+python api/server.py
+
+# 6. Start MCP server
+python mcp/server.py
+```
+
+---
+
+## Architecture
 
 ```
 Your Changelog (JSON)
          │
          ▼
   ┌──────────────────┐
-  │  ChangelogParser  │  ──→  Parses versions + rules
-  └──────────────────┘
-
-         │
-         ▼
-  ┌──────────────────┐
-  │  VersionResolver  │  ──→  Computes ordered rule list for any A→B path
+  │  ChangelogParser  │  Parse versions + rules into MigrationRule objects
   └──────────────────┘
          │
          ▼
   ┌──────────────────┐
-  │  MigrationEngine  │  ──→  Applies CST transformers to source files
+  │  VersionResolver  │  Resolve upgrade/downgrade paths (A→B)
   └──────────────────┘
          │
          ▼
-  ┌────────────────────┐
-  │  MigratorGenerator │  ──→  Emits a pip-installable standalone CLI package
-  └────────────────────┘
+  ┌────────────────────────┐
+  │   RuleValidator         │  Validate rule schema, dependencies, conditions
+  └────────────────────────┘
+         │
+         ▼
+  ┌──────────────────────────────┐
+  │ TransactionalMigrationEngine │  Apply rules with rollback + checkpoints
+  └──────────────────────────────┘
+         │
+         ▼
+  ┌────────────────────────┐
+  │  LibCST Transformers   │  AST-level code transformations
+  └────────────────────────┘
+         │
+         ▼
+  ┌────────────────────────┐
+  │  MigratorGenerator    │  Emit standalone pip-installable CLI package
+  └────────────────────────┘
 ```
+
+**Parallel pipeline:** For multi-file directories, `ParallelMigrationEngine` distributes work across CPU cores using `ProcessPoolExecutor`, with AST-level and disk caching for performance.
 
 ---
 
@@ -66,46 +104,52 @@ Your Changelog (JSON)
 
 ```
 migrator_platform/
+├── api/
+│   └── server.py              # FastAPI REST API (15 endpoints)
 ├── cli/
-│   └── cli.py                  # Main CLI entry point (MigratorGen platform)
-│
+│   └── cli.py                # Main CLI (create, run, preview, rules, interactive)
 ├── core/
-│   ├── changelog_parser.py     # Parses JSON changelogs into MigrationRule objects
-│   ├── version_resolver.py     # Resolves upgrade/downgrade paths between arbitrary versions
-│   ├── migration_engine.py     # Applies transformation rules to Python source files
-│   ├── migrator_generator.py   # Generates the standalone distributable migrator package
-│   ├── transformers.py         # libcst-based AST transformers for each change type
-│   └── __init__.py
-│
+│   ├── changelog_parser.py   # MigrationRule, ChangeType, RuleWhenCondition, VersionChangelog
+│   ├── version_resolver.py   # VersionResolver, MigrationPath
+│   ├── migration_engine.py   # TransactionalMigrationEngine, MigrationReport
+│   ├── migrator_generator.py # Generates standalone migrator package
+│   ├── transformers.py       # LibCST transformers (16 base types)
+│   ├── transformers_advanced.py  # 7 advanced transformers (async, context, split, etc.)
+│   ├── validation.py        # RuleValidator, IdempotencyChecker, RuleDependencyGraph
+│   ├── symbol_resolver.py   # SymbolResolver, ImportGraph, ConfidenceScorer
+│   ├── diff_analyzer.py     # GitDiffAnalyzer, ChangelogToRulesConverter
+│   ├── llm_engine.py        # LLMSuggestionEngine (Anthropic/OpenAI)
+│   └── parallel_engine.py   # ParallelMigrationEngine, ASTCache, DiskCache
+├── mcp/
+│   └── server.py            # MCP server (10 AI agent tools)
 ├── examples/
-│   ├── mylib_changelog.json    # Example structured JSON changelog
-│   └── sample_user_code.py     # Example target Python file to migrate
-│
-├── generated_migrator/         # Output of `cli create` — distributable migrator package
-│   ├── mylib_migrator/
-│   │   ├── __init__.py
-│   │   └── __main__.py         # Self-contained migrator with all rules embedded
-│   ├── migration_rules.json    # Raw exported rules (can be reused with `cli run`)
-│   ├── setup.py
-│   └── README.md
-│
-├── tests/                      # Test suite
-├── requirements.txt
+│   ├── mylib_changelog.json    # Example with 12 rules across 4 versions
+│   └── sample_user_code.py     # Target Python file to migrate
+├── migration_packs/
+│   ├── pydantic.json       # 20 rules for Pydantic v1→v2 migration
+│   ├── fastapi.json        # 4 rules for FastAPI migration
+│   └── httpx.json         # 3 rules for httpx migration
+├── tests/
+│   └── test_platform.py    # 131 test cases covering all modules
+├── demo_all_features.py     # 17-feature demo script
+├── generated_migrator/      # Output of `cli create`
+├── .github/workflows/      # GitHub Actions CI
+├── .pre-commit-config.yaml # Pre-commit hooks
+├── pyproject.toml          # Project metadata, ruff, mypy, pytest config
 └── README.md
 ```
 
 ---
 
-## Requirements & Setup
+## Installation
 
-**Python 3.8+** is required.
+**Python 3.9+ required.**
 
 ```bash
-# Clone the project
-git clone <repo-url>
+# Clone and enter directory
 cd migrator_platform
 
-# Create a virtual environment (using uv — recommended on CachyOS/Arch)
+# Create virtual environment
 uv venv .venv
 source .venv/bin/activate
 
@@ -113,91 +157,31 @@ source .venv/bin/activate
 uv pip install -r requirements.txt
 ```
 
-`requirements.txt` currently installs:
-
+**Core dependencies** (`requirements.txt`):
 | Package | Purpose |
 |---|---|
 | `libcst>=1.0.0` | Concrete Syntax Tree — powers all code transformations |
-| `pytest>=7.0.0` | Testing |
+| `pydantic>=2.0` | Rule/schema validation models |
+| `fastapi>=0.100` | REST API server |
+| `uvicorn>=0.23` | ASGI server for FastAPI |
+| `pytest>=7.0` | Testing |
+| `httpx` | HTTP client for LLM API calls |
 
-> **Note for CachyOS / Arch users:** Always use `uv pip` inside the activated `.venv`, not the system `pip`. Run `source .venv/bin/activate` before any command.
-
----
-
-## Core Concepts
-
-### Changelog Formats
-
-MigratorGen accepts two input formats:
-
-#### 1. Structured JSON (recommended)
-
-A JSON file that explicitly lists every version and its machine-readable rules.
-
-```json
-{
-  "library": "mylib",
-  "versions": [
-    {
-      "version": "2.0.0",
-      "release_date": "2024-03-01",
-      "notes": "Major breaking release",
-      "rules": [
-        {
-          "change_type": "rename_function",
-          "version_introduced": "2.0.0",
-          "description": "Renamed connect() to create_connection()",
-          "old_name": "connect",
-          "new_name": "create_connection"
-        }
-      ]
-    }
-  ]
-}
+**Install all packages** (including API/MCP extras):
+```bash
+uv pip install -e .
 ```
 
 ---
 
-### Supported Change Types
-
-| `change_type` | What it does | Required extra fields |
-|---|---|---|
-| `rename_function` | Renames a function call everywhere | `old_name`, `new_name` |
-| `rename_class` | Renames a class everywhere (incl. instantiation) | `old_name`, `new_name` |
-| `rename_attribute` | Renames an object attribute (`.old` → `.new`) | `old_name`, `new_name` |
-| `rename_import` | Renames a symbol and/or moves it to a new module | `old_name`, `new_name`, `old_module`, `new_module` |
-| `add_argument` | Adds a keyword argument with a default value to all call sites | `function_name`, `argument_name`, `default_value` |
-| `remove_argument` | Removes a keyword argument from all call sites | `function_name`, `argument_name` |
-| `change_argument_default` | Changes the default value of a parameter | `function_name`, `argument_name`, `default_value` |
-| `reorder_arguments` | Reorders arguments in function call sites | `function_name`, `new_order` |
-| `deprecate_function` | Adds a `# DEPRECATED:` comment above all call sites | `old_name`, `replacement` |
-| `remove_function` | Marks call sites of a removed function | `old_name` |
-| `remove_class` | Marks usages of a removed class | `old_name` |
-| `replace_with_property` | Converts method calls (`.method()`) to property access (`.prop`) | `old_name`, `new_name` |
-| `move_to_module` | Updates import path when a symbol moves modules | `old_name`, `source_module`, `target_module` |
-| `add_decorator` | Adds a decorator to a named function | `function_name`, `decorator_name` |
-| `remove_decorator` | Removes a decorator from a named function | `function_name`, `decorator_name` |
-| `wrap_in_context_manager` | Wraps a block in a `with` statement | `function_name` |
-| `custom_transform` | Reserved for custom transformations | (depends) |
-
----
-
-## Using the CLI
-
-All CLI commands are in `cli/cli.py`. Run from the project root:
+## CLI Reference
 
 ```bash
-# Always activate venv first
 source .venv/bin/activate
-
-python cli/cli.py <command> [options]
+python cli/cli.py <command>
 ```
 
----
-
-### `create` — Build a Migrator
-
-Reads a changelog and generates a complete, pip-installable migrator package.
+### `create` — Build a Migrator Package
 
 ```bash
 python cli/cli.py create \
@@ -206,81 +190,17 @@ python cli/cli.py create \
   --output ./generated_migrator
 ```
 
-| Flag | Required | Description |
-|---|---|---|
-| `--changelog` | Yes | Path to changelog file (`.json`) |
-| `--library` | Yes | The library name (e.g. `mylib`, `requests`) |
-| `--output` | No | Output directory (default: `./generated_migrator`) |
-
-**Output structure:**
-```
-generated_migrator/
-├── mylib_migrator/
-│   ├── __init__.py
-│   └── __main__.py       ← All rules embedded here; self-contained
-├── migration_rules.json  ← Raw rule export (reusable)
-├── setup.py
-└── README.md
-```
-
----
-
-### `update` — Add New Versions
-
-Update an already-generated migrator with rules from a newer changelog:
-
-```bash
-python cli/cli.py update \
-  --existing generated_migrator/migration_rules.json \
-  --new-changelog CHANGELOG_v4.json \
-  --output ./generated_migrator
-```
-
-| Flag | Required | Description |
-|---|---|---|
-| `--existing` | Yes | Path to existing `migration_rules.json` |
-| `--new-changelog` | Yes | Path to the new changelog file |
-| `--output` | No | Output dir (defaults to same location as `--existing`) |
-| `--library` | No | Override library name |
-
-Only **new versions** found in the new changelog will be merged in — existing versions are preserved.
-
----
-
 ### `run` — Migrate Code
 
-Apply migration rules to a file or entire directory of Python files:
-
 ```bash
-# Migrate a whole project directory
 python cli/cli.py run \
   --rules generated_migrator/migration_rules.json \
   --from 1.0.0 \
   --to 3.0.0 \
   ./myproject/
-
-# Migrate a single file
-python cli/cli.py run \
-  --rules generated_migrator/migration_rules.json \
-  --from 1.0.0 \
-  --to latest \
-  myfile.py
 ```
 
-| Flag | Required | Description |
-|---|---|---|
-| `path` | Yes | File or directory to migrate (positional) |
-| `--rules` | Yes | Path to `migration_rules.json` |
-| `--from` | Yes | Source version (e.g. `1.0.0`) |
-| `--to` | No | Target version (default: `latest`) |
-| `--dry-run` | No | Show what would change, but don't write files |
-| `--no-backup` | No | Skip creating `.py.bak` backup files |
-
----
-
 ### `preview` — Dry-run a File
-
-Show a unified diff of what the migration would change in a single file, without modifying it:
 
 ```bash
 python cli/cli.py preview \
@@ -290,231 +210,396 @@ python cli/cli.py preview \
   examples/sample_user_code.py
 ```
 
-| Flag | Required | Description |
-|---|---|---|
-| `file` | Yes | Python file to preview (positional) |
-| `--rules` | Yes | Path to `migration_rules.json` |
-| `--from` | Yes | Source version |
-| `--to` | No | Target version (default: `latest`) |
-
----
-
 ### `rules` — Inspect Rules
-
-List all migration rules inside a `migration_rules.json` file:
 
 ```bash
 python cli/cli.py rules --rules generated_migrator/migration_rules.json
 ```
 
-Example output:
-```
-📚 Migration rules for: mylib
-==================================================
-
-  v2.0.0 (2024-03-01) - 5 rule(s)
-    • [rename_function] [connect -> create_connection] Renamed connect() to create_connection()
-    • [rename_class] [Client -> APIClient] Client class renamed to APIClient
-    ...
-```
-
----
-
 ### `interactive` — Manual Rule Builder
 
-Build migration rules step-by-step in your terminal — no changelog file needed:
-
 ```bash
-python cli/cli.py interactive --output my_rules_v2.json
-```
-
-The wizard will prompt you for:
-1. Version number
-2. Change type (from a numbered list)
-3. Type-specific fields (old name, new name, module, argument, etc.)
-
-Repeat for as many rules as needed, then type `0` to finish. Rules are saved to the specified JSON file.
-
----
-
-## Using the Generated Migrator
-
-The `create` command outputs a standalone Python package. This is what you distribute to your library's users — they don't need to install MigratorGen itself.
-
-### Installing the Generated Package
-
-```bash
-cd generated_migrator
-
-# Install (editable mode, recommended for development)
-pip install -e .
-# or with uv:
-uv pip install -e .
-```
-
-This registers the `mylib_migrator` command on your PATH.
-
-### Generated CLI Commands
-
-#### List supported versions
-```bash
-mylib_migrator list-versions
-# or equivalently:
-python -m mylib_migrator list-versions
-```
-
-Output:
-```
-Available versions for mylib:
-  v1.1.0  (1 rule)
-  v2.0.0  (5 rules)
-  v2.1.0  (3 rules)
-  v3.0.0  (3 rules)
-```
-
-#### Migrate a project
-```bash
-# Upgrade from v1.0.0 to latest
-mylib_migrator migrate --from 1.0.0 --to latest ./myproject/
-
-# Upgrade to a specific version
-mylib_migrator migrate --from 1.0.0 --to 2.0.0 ./myproject/
-
-# Downgrade
-mylib_migrator migrate --from 3.0.0 --to 1.0.0 ./myproject/
-
-# Dry run (no files written)
-mylib_migrator migrate --from 1.0.0 --to latest ./myproject/ --dry-run
-
-# Migrate + show unified diffs instead of writing
-mylib_migrator migrate --from 1.0.0 --to latest myfile.py --preview
-
-# Migrate without creating .bak backups
-mylib_migrator migrate --from 1.0.0 --to latest ./myproject/ --no-backup
-```
-
-#### Validate a file parses correctly
-```bash
-mylib_migrator validate myfile.py
+python cli/cli.py interactive --output my_rules.json
 ```
 
 ---
 
-## Python API (Programmatic Usage)
+## REST API
 
-You can use all components directly in your own Python scripts:
+Start the server:
+```bash
+python api/server.py
+# or with uvicorn:
+uvicorn api.server:app --host 0.0.0.0 --port 8000 --reload
+```
+
+The API is available at `http://localhost:8000`. Interactive docs at `http://localhost:8000/docs`.
+
+### Endpoints
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/` | API health check |
+| `GET` | `/health` | Detailed health status |
+| `POST` | `/parse` | Parse a changelog JSON |
+| `POST` | `/resolve` | Resolve migration path |
+| `POST` | `/migrate` | Migrate code string with rules |
+| `POST` | `/migrate-file` | Migrate a file |
+| `POST` | `/preview` | Preview migration as unified diff |
+| `POST` | `/validate` | Validate rules |
+| `POST` | `/generate-rules` | Auto-generate rules from changelog text |
+| `POST` | `/rules-from-diff` | Auto-generate rules from git diff |
+| `GET` | `/versions` | List available versions |
+| `GET` | `/rules` | List all rules |
+| `POST` | `/export` | Export rules to JSON |
+| `POST` | `/parallel-migrate` | Migrate directory in parallel |
+| `GET` | `/capabilities` | List all registered change types |
+
+### Example: Migrate via API
+
+```bash
+curl -X POST http://localhost:8000/migrate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "Client()",
+    "rules": [{"id": "R1", "change_type": "rename_class", "version_introduced": "2.0.0",
+      "description": "Rename", "old_name": "Client", "new_name": "APIClient"}],
+    "from_version": "1.0.0",
+    "to_version": "2.0.0"
+  }'
+```
+
+---
+
+## MCP Server (AI Agents)
+
+Start the MCP server for AI agent integration:
+
+```bash
+python mcp/server.py
+```
+
+The server exposes **10 tools** for AI agents (Claude, Copilot, etc.):
+
+| Tool | Description |
+|---|---|
+| `migrate_code` | Apply migration rules to code |
+| `migrate_file` | Migrate a Python file |
+| `preview_migration` | Get unified diff preview |
+| `parse_changelog` | Parse a changelog file |
+| `resolve_migration_path` | Resolve version upgrade/downgrade path |
+| `generate_rules_from_diff` | Auto-generate rules from git diff |
+| `generate_rules_from_changelog` | Parse changelog text into rules |
+| `validate_rules` | Validate migration rules |
+| `list_versions` | List available versions |
+| `get_rule_details` | Get details of specific rules |
+
+### Example: Using with Claude
+
+In your Claude AI client, configure the MCP server URL and use the tools above to guide migrations.
+
+---
+
+## Python API
 
 ```python
 from pathlib import Path
-from core.changelog_parser import ChangelogParser
+from core.changelog_parser import ChangelogParser, MigrationRule, ChangeType
 from core.version_resolver import VersionResolver
-from core.migration_engine import MigrationEngine
+from core.migration_engine import TransactionalMigrationEngine
 
-# 1. Parse a changelog
-content = Path('examples/mylib_changelog.json').read_text()
+# 1. Parse
 parser = ChangelogParser()
-changelogs = parser.parse(content, fmt='json')   # or fmt='auto'
+changelogs = parser.parse(Path('examples/mylib_changelog.json').read_text())
 
-# 2. Resolve the migration path
+# 2. Resolve path
 resolver = VersionResolver(changelogs)
 path = resolver.resolve_path('1.0.0', '3.0.0')
 
-print(f"Migration: {path.source_version} → {path.target_version}")
-print(f"Is upgrade: {path.is_upgrade}")
-print(f"Rules: {len(path.rules)}")
-
-# 3. Migrate a string of code
-engine = MigrationEngine()
-result = engine.migrate_code(source_code, path.rules)
+# 3. Migrate
+engine = TransactionalMigrationEngine()
+result = engine.migrate_code("connect(host='localhost')", path.rules)
 print(result.transformed_code)
-print(result.changes)        # List of human-readable change descriptions
-print(result.was_modified)   # bool
-print(result.errors)         # Any errors encountered
-
-# 4. Migrate a file in place
-result = engine.migrate_file(
-    Path('myfile.py'),
-    path.rules,
-    dry_run=False,   # Set True to skip writing
-    backup=True,     # Creates myfile.py.bak before overwriting
-)
-
-# 5. Migrate an entire directory
-report = engine.migrate_directory(
-    Path('./myproject/'),
-    path,
-    dry_run=False,
-    backup=True,
-)
-print(report.summary())
-
-# 6. Preview as unified diff
-preview = engine.preview_migration(source_code, path.rules)
-print(preview)
-```
-
-### Working with MigrationRule objects directly
-
-```python
-from core.changelog_parser import MigrationRule, ChangeType
-
-rule = MigrationRule(
-    change_type=ChangeType.RENAME_FUNCTION,
-    version_introduced="2.0.0",
-    description="Renamed old_func to new_func",
-    old_name="old_func",
-    new_name="new_func",
-)
-
-# Serialize / deserialize
-d = rule.to_dict()
-rule2 = MigrationRule.from_dict(d)
-```
-
-### Generating the Migrator Package Programmatically
-
-```python
-from core.migrator_generator import MigratorGenerator
-
-generator = MigratorGenerator(library_name="mylib")
-output_path = generator.generate(changelogs, output_dir="./dist/")
 ```
 
 ---
 
-## Writing Your Changelog JSON
+## Supported Change Types
 
-The JSON schema for a full changelog:
+| Change Type | Description | Key Fields |
+|---|---|---|
+| `rename_function` | Renames function calls/definitions | `old_name`, `new_name` |
+| `rename_class` | Renames class usages | `old_name`, `new_name` |
+| `rename_attribute` | Renames `.old` → `.new` | `old_name`, `new_name` |
+| `rename_import` | Renames symbol and/or moves module | `old_name`, `new_name`, `old_module`, `new_module` |
+| `add_argument` | Adds keyword arg to call sites | `function_name`, `argument_name`, `default_value` |
+| `remove_argument` | Removes argument from call sites | `function_name`, `argument_name` |
+| `change_argument_default` | Changes parameter default | `function_name`, `argument_name`, `default_value` |
+| `reorder_arguments` | Reorders arguments | `function_name`, `new_order` |
+| `deprecate_function` | Adds `# DEPRECATED:` comment | `old_name`, `replacement` |
+| `remove_function` | Marks removed function calls | `old_name` |
+| `remove_class` | Marks removed class usages | `old_name` |
+| `replace_with_property` | Converts `.method()` → `.prop` | `old_name`, `new_name` |
+| `move_to_module` | Updates import path | `old_name`, `source_module`, `target_module` |
+| `add_decorator` | Adds decorator to function | `function_name`, `decorator_name` |
+| `remove_decorator` | Removes decorator | `function_name`, `decorator_name` |
+| `rename_argument` | Renames keyword argument | `function_name`, `argument_name`, `new_argument_name` |
+| `sync_to_async` | Converts sync ↔ async functions | `function_name`, `extra.convert_to_async` |
+| `wrap_in_context_manager` | Wraps function in context manager | `function_name`, `decorator_name` |
+| `class_split` | Extracts methods to new class | `extra.split_class`, `extra.extract_methods`, `extra.new_class_name` |
+| `module_split` | Extracts symbols to new module | `source_module`, `extra.extract_symbols`, `target_module` |
+| `change_return_type` | Changes function return annotation | `function_name`, `extra.new_return_type` |
+| `enum_migration` | Renames enum values | `old_name`, `new_name`, `extra.enum_class` |
+| `dataclass_field_change` | Changes dataclass field defs | `old_name`, `new_name`, `extra.field_operation` |
+
+---
+
+## Advanced Features
+
+### Rule Conditions (`when`)
+
+Rules can include conditional activation using the `when` clause:
 
 ```json
 {
-  "library": "<your-library-name>",
+  "id": "R-001",
+  "change_type": "rename_function",
+  "version_introduced": "2.0.0",
+  "description": "Rename Client",
+  "old_name": "Client",
+  "new_name": "APIClient",
+  "when": {
+    "imported_from": "mylib.legacy",
+    "inside_class": "Service",
+    "python_version": ">=3.8"
+  }
+}
+```
+
+Supported conditions:
+- `imported_from` — only when imported from a specific module
+- `not_imported_from` — only when NOT from a module
+- `inside_class` / `outside_class` — scope-based filtering
+- `inside_function` — only within specific function
+- `python_version`, `min_python_version`, `max_python_version` — version gating
+- `has_decorator` / `lacks_decorator` — decorator presence
+- `returns_type` — return type filtering
+- `called_from_module` — call site filtering
+- `called_as_method` — method vs function call
+- `custom_condition` — arbitrary Python expression
+
+### Rule Dependencies & Ordering
+
+Rules can declare execution order:
+
+```json
+{
+  "id": "R-002",
+  "change_type": "add_argument",
+  "version_introduced": "2.0.0",
+  "description": "Add timeout",
+  "function_name": "connect",
+  "argument_name": "timeout",
+  "default_value": "30",
+  "depends_on": ["R-001"],
+  "priority": 50,
+  "conflicts_with": ["R-OLD"],
+  "run_after": ["R-001"]
+}
+```
+
+- `priority` (0-1000, lower = higher priority)
+- `depends_on` — rule must run after referenced rule
+- `conflicts_with` — rules that cannot coexist
+- `run_after` — explicit ordering directive
+
+`RuleDependencyGraph` validates these and produces a DAG-based execution order.
+
+### Transactional Engine & Rollback
+
+`TransactionalMigrationEngine` provides:
+- **Rollback**: On syntax error, restores original code from checkpoint
+- **Checkpoints**: Saves state before each rule application
+- **Confidence scoring**: Per-rule confidence (high/medium/low)
+- **Safety classification**: `safe`, `review_required`, `risky`
+- **Dry-run mode**: Preview changes without file modification
+
+```python
+from core.migration_engine import TransactionalMigrationEngine, SafetyLevel
+
+engine = TransactionalMigrationEngine()
+result = engine.migrate_code(code, rules, dry_run=False)
+
+print(f"Confidence: {result.overall_confidence}")
+print(f"Safety: {result.safety_level}")
+print(f"Changes: {result.changes}")
+print(f"Rollback used: {result.rollback_used}")
+```
+
+### Validation & Safety
+
+`RuleValidator` validates all rules before migration:
+
+```python
+from core.validation import RuleValidator
+
+validator = RuleValidator()
+report = validator.validate_rules(rules)
+if not report.valid:
+    for error in report.errors:
+        print(f"ERROR: {error.message}")
+```
+
+Checks include:
+- Required/forbidden fields per change type
+- Conflicting rename rules
+- Invalid Python identifiers
+- Invalid module paths
+- Dependency cycle detection
+- Reversibility warnings
+
+`IdempotencyChecker` verifies rules produce identical output when applied twice:
+```python
+from core.validation import IdempotencyChecker
+is_safe = IdempotencyChecker.check_rule_idempotency(rule, code, None)
+```
+
+### Semantic Symbol Resolution
+
+`SymbolResolver` uses LibCST metadata providers (`ScopeProvider`, `QualifiedNameProvider`) for accurate, scope-aware symbol resolution:
+
+```python
+from core.symbol_resolver import SymbolResolver
+
+resolver = SymbolResolver(code)
+resolver._build_import_graph()
+src = resolver._import_graph.import_sources.get("Client")
+# -> "mylib"
+```
+
+`ConfidenceScorer` rates rule confidence based on change type and scope:
+
+```python
+from core.symbol_resolver import ConfidenceScorer
+
+scorer = ConfidenceScorer()
+score = scorer.score_rule(rule, code)
+# -> "high", "medium", or "low"
+```
+
+### Auto-Rule Generation from Git Diffs
+
+`GitDiffAnalyzer` automatically extracts migration rules from code diffs:
+
+```python
+from core.diff_analyzer import GitDiffAnalyzer
+
+analyzer = GitDiffAnalyzer(old_code, new_code)
+rules = analyzer.analyze()
+# Returns list of MigrationRule dicts
+```
+
+`ChangelogToRulesConverter` parses human-readable changelog text:
+
+```python
+from core.diff_analyzer import ChangelogToRulesConverter
+
+converter = ChangelogToRulesConverter(
+    text="renamed Client to APIClient\nadded timeout parameter",
+    version="2.0.0"
+)
+rules = converter.convert()
+```
+
+### LLM-Powered Suggestions
+
+`LLMSuggestionEngine` uses Anthropic or OpenAI to suggest migration strategies:
+
+```python
+from core.llm_engine import LLMSuggestionEngine
+
+engine = LLMSuggestionEngine(provider="anthropic")
+suggestions = engine.suggest_migration(code, target_library="pydantic")
+```
+
+Requires environment variables: `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`.
+
+### Parallel Migration
+
+`ParallelMigrationEngine` distributes file migration across CPU cores:
+
+```python
+from core.parallel_engine import ParallelMigrationEngine
+
+engine = ParallelMigrationEngine(max_workers=4)
+report = engine.migrate_directory(Path('./myproject/'), rules)
+print(report.summary())
+```
+
+Features:
+- `ProcessPoolExecutor` for true parallelism
+- AST-level LRU cache (`ASTCache`)
+- Disk-based cache for repeated migrations (`DiskCache`)
+- Per-file and aggregate reports
+
+---
+
+## Migration Packs
+
+Pre-built rule sets for popular libraries are in `migration_packs/`:
+
+| Pack | Description |
+|---|---|
+| `pydantic.json` | 20 rules: Pydantic v1 → v2 (`model_validator`, `ConfigDict`, etc.) |
+| `fastapi.json` | 4 rules: FastAPI dependency changes |
+| `httpx.json` | 3 rules: httpx async client migration |
+
+```bash
+# Use a migration pack
+python cli/cli.py create \
+  --changelog migration_packs/pydantic.json \
+  --library pydantic \
+  --output ./pydantic_migrator
+```
+
+---
+
+## Writing Changelog JSON
+
+```json
+{
+  "library": "mylib",
   "versions": [
     {
       "version": "2.0.0",
       "release_date": "2024-03-01",
-      "notes": "Optional human-readable notes",
+      "notes": "Breaking changes",
       "rules": [
         {
-          "change_type": "<see table above>",
+          "id": "R-001",
+          "change_type": "rename_function",
           "version_introduced": "2.0.0",
-          "description": "Human-readable description of this change",
-
-          "old_name": "old_function_name",
-          "new_name": "new_function_name",
-
-          "function_name": "some_function",
-          "argument_name": "verbose",
+          "description": "Renamed connect() to create_connection()",
+          "old_name": "connect",
+          "new_name": "create_connection",
+          "confidence_hint": "high",
+          "tags": ["api-change"],
+          "safety": "safe"
+        },
+        {
+          "id": "R-002",
+          "change_type": "add_argument",
+          "version_introduced": "2.0.0",
+          "description": "Added timeout parameter",
+          "function_name": "create_connection",
+          "argument_name": "timeout",
           "default_value": "30",
-
-          "old_module": "mylib.old",
-          "new_module": "mylib.new",
-
-          "source_module": "mylib.helpers",
-          "target_module": "mylib.utils",
-
-          "replacement": "new_function_name",
-          "decorator_name": "handler"
+          "when": {
+            "imported_from": "mylib",
+            "min_python_version": "3.8"
+          },
+          "depends_on": ["R-001"],
+          "priority": 100
         }
       ]
     }
@@ -522,116 +607,170 @@ The JSON schema for a full changelog:
 }
 ```
 
-**Only include the fields relevant to your change type.** Unused fields can be omitted or set to `null`.
+**Only include fields relevant to the change type.** Each `change_type` has specific required and forbidden fields (validated by `RuleValidator`).
 
 ---
 
-
-## Downgrade Support
-
-The `VersionResolver` supports **backwards migrations** — simply set `--from` to the higher version and `--to` to the lower one:
+## Testing
 
 ```bash
-mylib_migrator migrate --from 3.0.0 --to 1.0.0 ./myproject/
+# Run full test suite
+python -m pytest tests/test_platform.py -v
+
+# Run specific test class
+python -m pytest tests/test_platform.py::TestChangelogParserBasics -v
+
+# Run with coverage
+python -m pytest tests/ -v --tb=short
 ```
 
-Reversible rules (renames, import moves, attribute renames) are automatically inverted. Non-reversible rules (function/class removal, decorator additions) emit a warning and are skipped.
-
-| Change type | Reversible? |
-|---|---|
-| `rename_function` | Yes (swaps old/new) |
-| `rename_class` | Yes |
-| `rename_attribute` | Yes |
-| `rename_import` | Yes |
-| `remove_function` | No (warns and skips) |
-| `remove_class` | No (warns and skips) |
-| All others | Warning (warns and skips) |
+**131 test cases** covering:
+- Changelog parsing & serialization
+- Version resolution & path building
+- All 16 base transformers + 7 advanced transformers
+- Transformer map completeness
+- Rule conditions (`when` clauses)
+- Rule dependencies & ordering
+- Validation reports & error detection
+- CAPABILITIES registry
+- Rule dependency graph (DAG, cycle detection)
+- Idempotency checking & fingerprinting
+- Import graph & symbol resolution
+- Confidence scoring
+- Migration engine (single file, multi-file, dry-run, preview)
+- Safety classification
+- Migration report formatting
+- Changelog-to-rules conversion
+- Git diff analysis
+- LLM suggestion engine
+- Parallel migration engine
+- AST and disk caching
+- Full end-to-end pipeline
+- Edge cases (empty code, comments, multiline strings)
 
 ---
 
-## Backup Behaviour
+## Linting & Type Checking
 
-By default, whenever a file is modified, the **original is saved with a `.bak` extension** in the same directory:
+Pre-commit hooks are configured (`.pre-commit-config.yaml`):
 
+```bash
+# Install pre-commit
+uv pip install pre-commit
+pre-commit install
+
+# Run all hooks manually
+pre-commit run --all-files
+
+# Run specific hooks
+pre-commit run ruff --all-files
+pre-commit run mypy --all-files
+pre-commit run bandit -r core/
 ```
-myfile.py      ← migrated version
-myfile.py.bak  ← original backup
-```
 
-To skip backups, pass `--no-backup` to `run` or `migrate`.
+Tools configured:
+- **ruff** + **ruff-format** — linting and formatting
+- **mypy** — type checking (`--ignore-missing-imports`)
+- **bandit** — security scanning
+- **pyright** — static type analysis
+- **pre-commit-hooks** — trailing whitespace, YAMl, large files, merge conflicts
+
+Run linting directly (if tools installed system-wide):
+```bash
+ruff check . --fix
+ruff format .
+mypy core/ api/ mcp/ tests/ --ignore-missing-imports
+```
 
 ---
 
 ## Examples
 
-### Full end-to-end example
-
+### 1. Demo all features
 ```bash
-# 1. Activate environment
-source .venv/bin/activate
+python demo_all_features.py
+```
+Prints output for all 17 major features.
 
-# 2. Generate migrator from the provided example changelog
+### 2. Create and use a migrator
+```bash
+# Create
 python cli/cli.py create \
   --changelog examples/mylib_changelog.json \
   --library mylib \
   --output ./generated_migrator
 
-# 3. Install the generated migrator
+# Install
 cd generated_migrator && uv pip install -e . && cd ..
 
-# 4. Check supported versions
+# List versions
 mylib_migrator list-versions
 
-# 5. Preview changes on the example file
-mylib_migrator migrate --from 1.0.0 --to 3.0.0 examples/sample_user_code.py --preview
+# Preview migration
+mylib_migrator migrate \
+  --from 1.0.0 --to 3.0.0 \
+  examples/sample_user_code.py --preview
 
-# 6. Apply the migration
-mylib_migrator migrate --from 1.0.0 --to 3.0.0 examples/sample_user_code.py
-
-# 7. Inspect the result
-cat examples/sample_user_code.py
+# Apply migration
+mylib_migrator migrate \
+  --from 1.0.0 --to 3.0.0 \
+  examples/sample_user_code.py
 ```
 
-### Running the platform programmatic demo
-
+### 3. Start REST API and migrate via HTTP
 ```bash
-python demo_migration.py
+# Terminal 1: Start API
+python api/server.py
+
+# Terminal 2: Make requests
+curl http://localhost:8000/health
+curl -X POST http://localhost:8000/versions \
+  -d '{"rules_file": "examples/mylib_changelog.json"}'
 ```
 
-This runs a full end-to-end demo: parsing the JSON changelog, resolving v1.0.0→v3.0.0, applying 12 rules to sample code, and printing the migrated output.
+### 4. Auto-generate rules from a changelog
+```bash
+python cli/cli.py run \
+  --rules migration_packs/pydantic.json \
+  --from 1.0.0 \
+  --to 2.0.0 \
+  ./my_project/
+```
+
+### 5. Parallel migration
+```python
+from core.parallel_engine import ParallelMigrationEngine
+from core.changelog_parser import ChangelogParser
+from core.version_resolver import VersionResolver
+
+parser = ChangelogParser()
+changelogs = parser.parse(open("migration_packs/pydantic.json").read())
+resolver = VersionResolver(changelogs)
+path = resolver.resolve_path("1.0.0", "2.0.0")
+
+engine = ParallelMigrationEngine(max_workers=8)
+report = engine.migrate_directory(Path("./my_project/"), path.rules)
+print(report.summary())
+```
 
 ---
 
 ## Troubleshooting
 
 ### `ModuleNotFoundError: No module named 'core'`
-
-Run the CLI from the project root with the full path:
-```bash
-# From project root:
-python cli/cli.py create ...
-```
-`cli/cli.py` adds its parent directory to `sys.path` automatically, so always run it as `python cli/cli.py` (not `python -m cli.cli` or from within the `cli/` directory).
+Run CLI from project root: `python cli/cli.py` not `python -m cli.cli`.
 
 ### `ModuleNotFoundError: No module named 'libcst'`
-
-Install the dependencies inside your venv:
-```bash
-source .venv/bin/activate
-uv pip install -r requirements.txt
-```
+Activate venv and reinstall: `source .venv/bin/activate && uv pip install -r requirements.txt`.
 
 ### `mylib_migrator: command not found`
-
-You need to install the generated package first:
-```bash
-cd generated_migrator
-uv pip install -e .
-```
-Then make sure your venv is active when you run it.
+Install the generated package: `cd generated_migrator && uv pip install -e .`.
 
 ### Migration produces no changes
+Check versions exist: `mylib_migrator list-versions`. Confirm source code uses old API names. Use `--preview` to inspect diffs.
 
-- Check that the versions you specified with `--from` and `--to` actually exist by running `list-versions`.
-- Confirm your source file actually uses the old API names the rules are looking for.
-- Try `--preview` mode to see the diff without committing changes.
+### API server won't start
+Check port is free: `lsof -i :8000`. If busy, kill the process or use `--port 8001`.
+
+### MCP server won't start
+Ensure `requirements.txt` is fully installed. Check `mcp/server.py` has no import errors: `python -c "import mcp.server"`.
