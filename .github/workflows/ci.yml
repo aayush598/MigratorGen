@@ -31,10 +31,10 @@ jobs:
         run: pip install ruff
 
       - name: Run ruff check
-        run: ruff check .
+        run: ruff check backend/ mcp/ sdk/ tests/
 
       - name: Check ruff format
-        run: ruff format --check .
+        run: ruff format --check backend/ mcp/ sdk/ tests/
 
   typecheck:
     name: Type Check
@@ -55,7 +55,7 @@ jobs:
           pip install -e .
 
       - name: Run mypy
-        run: mypy core/ services/ api/ mcp/ tests/
+        run: mypy backend/ mcp/ tests/
 
   test:
     name: Test
@@ -122,7 +122,7 @@ jobs:
         run: pip install bandit
 
       - name: Run bandit
-        run: bandit -r core/ api/ mcp/ services/ -f json -o bandit-report.json
+        run: bandit -r backend/ mcp/ -f json -o bandit-report.json
 
       - name: Upload Bandit report
         uses: actions/upload-artifact@v4
@@ -156,7 +156,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: Dockerfile.api
+          file: infra/docker/Dockerfile.api
           push: true
           tags: |
             ghcr.io/${{ github.repository }}/migration-api:${{ github.sha }}
@@ -168,7 +168,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: Dockerfile.worker
+          file: infra/docker/Dockerfile
           push: true
           tags: |
             ghcr.io/${{ github.repository }}/migration-worker:${{ github.sha }}
@@ -180,7 +180,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: Dockerfile.nginx
+          file: infra/docker/Dockerfile.nginx
           push: true
           tags: |
             ghcr.io/${{ github.repository }}/migration-nginx:${{ github.sha }}

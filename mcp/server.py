@@ -31,7 +31,8 @@ from typing import Any, Dict, List, Optional, Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+ROOT = str(Path(__file__).resolve().parent.parent)
+sys.path.insert(0, ROOT)
 
 from core.changelog_parser import ChangelogParser, MigrationRule, ChangeType, VersionChangelog, MigrationFile
 from core.version_resolver import VersionResolver, MigrationPath

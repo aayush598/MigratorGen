@@ -30,7 +30,7 @@ jobs:
 
       - name: Run Bandit
         run: |
-          bandit -r core/ api/ mcp/ -f screen --confidence-level high --severity-level medium
+          bandit -r backend/ mcp/ -f screen --confidence-level high --severity-level medium
 
       - name: Upload Bandit results
         if: always()

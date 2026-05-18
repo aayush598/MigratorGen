@@ -40,7 +40,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: Dockerfile.api
+          file: infra/docker/Dockerfile.api
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_API }}:${{ steps.version.outputs.version }}
@@ -53,7 +53,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: Dockerfile.worker
+          file: infra/docker/Dockerfile
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_WORKER }}:${{ steps.version.outputs.version }}

@@ -46,7 +46,7 @@ mcp = [
 ]
 
 [project.scripts]
-migratorgen = "cli.cli:main"
+migratorgen = "cli.main:main"
 
 [project.urls]
 Homepage = "https://github.com/migratorgen/migratorgen"
@@ -55,8 +55,7 @@ Documentation = "https://migratorgen.readthedocs.io"
 Changelog = "https://github.com/migratorgen/migratorgen/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
-where = ["."]
-include = ["core*", "cli*"]
+where = ["core", "cli", "shared"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
