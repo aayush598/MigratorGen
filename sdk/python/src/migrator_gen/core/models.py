@@ -22,7 +22,7 @@ class RuleWhenCondition(BaseModel):
 class Rule(BaseModel):
     id: str = Field(..., description="Unique rule identifier")
     change_type: ChangeType = Field(..., description="Kind of migration change")
-    version_introduced: str = Field(default="X.Y.Z", pattern=r"^[\w.]+$")
+    version_introduced: str = Field(default="0.0.0", pattern=r"^[\w.]+$")
     description: str = Field(..., description="Human-readable summary")
     old_name: str | None = None
     new_name: str | None = None
