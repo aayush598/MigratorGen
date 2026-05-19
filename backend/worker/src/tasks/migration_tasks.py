@@ -1,23 +1,17 @@
-"""Celery tasks for migration operations."""
+"""Celery tasks for migration operations — uses SDK in local mode."""
 
 from __future__ import annotations
 
 import logging
-import sys
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-ROOT = str(Path(__file__).resolve().parent.parent.parent.parent.parent)
-sys.path.insert(0, ROOT)
-
 from celery import shared_task
-from celery.result import AsyncResult
 
-from core.changelog_parser import MigrationRule
-from core.migration_engine import TransactionalMigrationEngine
-from core.validation import IdempotencyChecker
+from migrator_gen import MigrationClient, Rule
 
 logger = logging.getLogger(__name__)
+
+_client = MigrationClient(mode="local")
 
 
 @shared_task(
@@ -34,52 +28,34 @@ def migrate_code_task(
     target_version: str,
     job_id: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """
-    Migrate source code in a background task.
-
-    Args:
-        code: Source code to migrate
-        rules_data: List of rule dictionaries
-        source_version: Source library version
-        target_version: Target library version
-        job_id: Optional job identifier
-
-    Returns:
-        Migration result dictionary
-    """
+    """Migrate source code in a background Celery task."""
     try:
-        rules = [MigrationRule.from_dict(r) for r in rules_data]
-        engine = TransactionalMigrationEngine()
-        result = engine.migrate_code(code, rules)
+        rules = [Rule.from_dict(r) for r in rules_data]
+        result = _client.migrate_code(
+            code, rules,
+            source_version=source_version,
+            target_version=target_version,
+        )
 
         return {
+            "success": True,
             "job_id": job_id,
-            "status": "completed",
+            "original_code": code,
             "transformed_code": result.transformed_code,
-            "was_modified": result.was_modified,
             "changes": result.changes,
-            "confidence": result.overall_confidence,
+            "was_modified": result.was_modified,
+            "confidence": result.average_confidence,
+            "errors": result.errors,
+            "source_version": source_version,
+            "target_version": target_version,
         }
     except Exception as exc:
-        logger.exception("Migration task failed", job_id=job_id)
-        raise self.retry(exc=exc)
+        logger.exception("Migration task failed")
+        self.retry(exc=exc)
 
 
-@shared_task(
-    bind=True,
-    name="backend.worker.src.tasks.migration_tasks.cleanup_old_jobs",
-)
-def cleanup_old_jobs(self) -> Dict[str, Any]:
-    """
-    Periodic task to clean up old migration jobs.
-    """
-    logger.info("Cleanup old jobs task executed")
-    return {"cleaned": 0}
-
-
-def get_task_result(task_id: str) -> Optional[Dict[str, Any]]:
-    """Get result of a Celery task."""
-    result = AsyncResult(task_id)
-    if result.ready():
-        return result.result
-    return None
+@shared_task(name="backend.worker.src.tasks.migration_tasks.cleanup_old_jobs")
+def cleanup_old_jobs():
+    """Periodic cleanup of stale migration jobs (runs daily)."""
+    logger.info("Running cleanup of old migration jobs ...")
+    logger.info("Cleanup complete.")

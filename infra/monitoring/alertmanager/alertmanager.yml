@@ -33,7 +33,7 @@ receivers:
         channel: '#alerts'
         send_resolved: true
         title: |
-          {{ if eq .Status "firing" }}🔥{{ else }}✅{{ end }} [{{ .Status | toUpper }}] {{ .GroupLabels.alertname }}
+          [{{ .Status | toUpper }}] {{ .GroupLabels.alertname }} ({{ .Status }})
         text: |
           {{ range .Alerts }}
           **{{ .Labels.severity | toUpper }}**: {{ .Annotations.summary }}

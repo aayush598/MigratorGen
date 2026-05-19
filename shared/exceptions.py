@@ -47,7 +47,7 @@ class MigratorBaseException(Exception):
             "cause": str(self.cause) if self.cause else None,
         }
 
-    def to_problem_details(self, type_url: str = "https://migratorgen.example.com/errors") -> Dict[str, Any]:
+    def to_problem_details(self, type_url: str = "https://migrator-gen.example.com/errors") -> Dict[str, Any]:
         """
         Convert to RFC 7807 Problem Details format.
 
@@ -230,7 +230,7 @@ def init_sentry(
     app: Any,
     dsn: str,
     environment: str,
-    service_name: str = "migratorgen",
+    service_name: str = "migrator-gen",
     release: Optional[str] = None,
 ) -> None:
     """
@@ -269,7 +269,7 @@ def global_exception_handler(request: Any, exc: Exception) -> Dict[str, Any]:
     )
 
     return {
-        "type": "https://migratorgen.example.com/errors/INTERNAL_ERROR",
+        "type": "https://migrator-gen.example.com/errors/INTERNAL_ERROR",
         "title": "An unexpected error occurred",
         "status": 500,
         "detail": str(exc),

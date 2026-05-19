@@ -11,6 +11,7 @@ WORKDIR /app
 RUN pip install --no-cache-dir uv
 
 COPY pyproject.toml ./
+COPY sdk/python/ sdk/python/
 
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --no-install-project --no-dev --no-editable
@@ -18,7 +19,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 COPY . .
 
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --no-install-project --no-dev --no-editable
+    uv sync --no-install-project --no-dev --no-editable && \
+    uv pip install -e sdk/python[all] --no-editable
 
 
 FROM python:3.14-slim

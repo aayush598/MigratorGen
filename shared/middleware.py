@@ -158,7 +158,7 @@ class TimeoutMiddleware(BaseHTTPMiddleware if STARLETTE_AVAILABLE else object):
             return JSONResponse(
                 status_code=504,
                 content={
-                    "type": "https://migratorgen.example.com/errors/TIMEOUT",
+                    "type": "https://migrator-gen.example.com/errors/TIMEOUT",
                     "title": "Request timed out",
                     "status": 504,
                     "detail": f"Request exceeded {self.timeout_seconds}s timeout",

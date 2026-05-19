@@ -1230,7 +1230,7 @@ class TestBreakingChange:
             description="Test change",
             severity="high",
             migration_strategy="Replace all usages",
-            ai_explanation="AI explanation here",
+            ai_explanation="Generated suggestion explanation",
         )
         assert bc.severity == "high"
         assert "high" in bc.severity

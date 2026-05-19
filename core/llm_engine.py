@@ -1,12 +1,12 @@
 """
 LLM-Powered Migration Suggestion Engine.
 
-Uses AI to:
-- Suggest missing migration rules from error messages
-- Generate transformation drafts from natural language descriptions
-- Explain breaking changes in human-readable terms
-- Suggest migration paths for complex upgrades
-- Analyze codebases for migration patterns
+Supports:
+- Suggesting missing migration rules from error messages
+- Generating transformation drafts from natural language descriptions
+- Explaining breaking changes in human-readable terms
+- Suggesting migration paths for complex upgrades
+- Analyzing codebases for migration patterns
 """
 
 import os
@@ -61,7 +61,7 @@ class BreakingChange:
 
 class LLMSuggestionEngine:
     """
-    Uses AI to generate migration rules from error messages and code analysis.
+    Generates migration rules from error messages and code analysis.
     """
 
     SYSTEM_PROMPT = """You are an expert Python migration engineer. Given code analysis or error messages,
@@ -365,7 +365,7 @@ For each breaking change, provide:
                     change_type=r.get("change_type", "unknown"),
                     description=r.get("description", ""),
                     confidence=SuggestionConfidence(r.get("confidence", "medium")),
-                    reasoning=r.get("reasoning", "AI-generated suggestion"),
+                    reasoning=r.get("reasoning", "Generated suggestion"),
                     code_snippet=r.get("code_snippet"),
                     suggested_fix=r.get("suggested_fix"),
                 ))

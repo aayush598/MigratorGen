@@ -37,7 +37,7 @@ print(f'\nTransformation result:')
 print(f'  Modified: {result.was_modified}')
 print(f'  Changes: {len(result.changes)}')
 for c in result.changes:
-    print(f'  ✓ {c}')
+    print(f'  + {c}')
 
 print('\n--- Migrated Code ---')
 print(result.transformed_code)

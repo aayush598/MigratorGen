@@ -309,7 +309,7 @@ def demo_llm_suggestion() -> None:
 
     if not suggestions:
         print("  (No LLM API key found - fallback rules shown)")
-        print("  Hint: Set ANTHROPIC_API_KEY or OPENAI_API_KEY for AI-powered suggestions")
+        print("  Hint: Set ANTHROPIC_API_KEY or OPENAI_API_KEY for LLM-powered suggestions")
 
 
 def demo_breaking_changes() -> None:
@@ -384,7 +384,7 @@ def demo_api_preview() -> None:
 
 def demo_mcp_preview() -> None:
     banner("15. MCP Server Preview")
-    print("MCP server at mcp/server.py exposes these tools to AI agents:")
+    print("MCP server at mcp/server.py exposes these tools to MCP hosts:")
     print("  generate_rules      - Generate rules from changelog/diff")
     print("  preview_migration   - Preview without modifying")
     print("  run_migration       - Apply migration")
@@ -425,10 +425,10 @@ def demo_migration_packs() -> None:
 
 def main() -> None:
     print("""
-    ╔═══════════════════════════════════════════════════════════════╗
-    ║                    MigratorGen Demo                        ║
-    ║   AI-native migration infrastructure for library maintainers  ║
-    ╚═══════════════════════════════════════════════════════════════╝
+    ###############################################################
+    #                    MigratorGen Demo                        #
+    #   Migration infrastructure for library maintainers          #
+    ###############################################################
     """)
 
     demos = [

@@ -122,7 +122,7 @@ def _build_main_module(package_name: str, library_name: str,
     w("            req = ['id', 'change_type', 'version_introduced', 'description']")
     w("            missing = [k for k in req if k not in r]")
     w("            if missing:")
-    w("                print('❌ Invalid rule in ' + v + ' (' + r.get('id', 'unknown') + '): missing ' + ', '.join(missing))")
+    w("                print('INVALID rule in ' + v + ' (' + r.get('id', 'unknown') + '): missing ' + ', '.join(missing))")
     w("                sys.exit(1)")
     w("_validate_rules()")
     nl()
@@ -533,7 +533,7 @@ class MigratorGenerator:
             json.dumps(raw_export, indent=2), encoding="utf-8"
         )
 
-        print(f"\n✅ Migrator package generated!")
+        print(f"\nMigrator package generated!")
         print(f"   Output    : {output_dir}")
         print(f"   Package   : {self.package_name}")
         print(f"   Versions  : {version_range}")

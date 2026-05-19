@@ -151,7 +151,7 @@ PROCESS_CPU_PERCENT = _make_gauge(
 class MetricsCollector:
     """Central metrics collector for MigratorGen."""
 
-    def __init__(self, service_name: str = "migratorgen"):
+    def __init__(self, service_name: str = "migrator-gen"):
         self.service_name = service_name
         self._active_migrations: int = 0
         self._cache_hits: int = 0

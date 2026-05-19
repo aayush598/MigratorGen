@@ -52,7 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Generate migration rules from changelog
   - Bulk migration support
 
-- **LLMSuggestionEngine** - AI-powered migration assistance:
+- **LLMSuggestionEngine** - LLM-powered migration assistance:
   - Context-aware suggestions
   - Best practice recommendations
   - Complex refactoring hints
@@ -78,14 +78,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `GET /api/v1/health` - Health check
   - `GET /api/v1/metrics` - Prometheus metrics
   - `GET /api/v1/status` - System status
-  - `POST /api/v1/suggest` - Get AI suggestions
+  - `POST /api/v1/suggest` - Get LLM suggestions
   - `DELETE /api/v1/migrations/{id}` - Cancel migration
 
 #### MCP Server
 
 - **MCP Server** with 10 tools:
   - `analyze_codebase` - Full codebase analysis
-  - `suggest_migrations` - AI-powered migration suggestions
+  - `suggest_migrations` - LLM-powered migration suggestions
   - `create_migration` - Create new migration
   - `execute_migration` - Run migration
   - `rollback_migration` - Rollback migration

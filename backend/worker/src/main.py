@@ -1,73 +1,54 @@
-"""Migration worker FastAPI application."""
+"""Migration worker FastAPI application — delegates to the SDK in local mode."""
 
 from __future__ import annotations
 
 import logging
 import os
-import sys
-from contextlib import asynccontextmanager
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
-ROOT = str(Path(__file__).resolve().parent.parent.parent.parent)
-sys.path.insert(0, ROOT)
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
-from starlette.requests import Request
-
-from core.changelog_parser import ChangelogParser, MigrationRule, ChangeType
-from core.version_resolver import VersionResolver
-from core.migration_engine import TransactionalMigrationEngine
-from core.validation import RuleValidator, ValidationReport, IdempotencyChecker
-from core.diff_analyzer import GitDiffAnalyzer, ChangelogToRulesConverter
+from migrator_gen import MigrationClient, Rule
 
 logger = logging.getLogger(__name__)
 
+_client = MigrationClient(mode="local")
+
+app = FastAPI(
+    title="MigratorGen Worker",
+    version="0.1.0",
+    description="Background migration worker API",
+)
+
 
 class MigrateCodeRequest(BaseModel):
-    source_code: str = Field(..., description="Source code to migrate")
-    rules: List[Dict[str, Any]] = Field(..., description="Migration rules")
-    source_version: str = Field(..., description="Source version")
-    target_version: str = Field(default="latest")
-    dry_run: bool = Field(default=False)
+    source_code: str
+    rules: List[Dict[str, Any]]
+    source_version: str = "1.0.0"
+    target_version: str = "latest"
+    dry_run: bool = False
 
 
-class ValidateRulesRequest(BaseModel):
-    rules: List[Dict[str, Any]] = Field(...)
+class PreviewRequest(BaseModel):
+    source_code: str
+    rules: List[Dict[str, Any]]
 
 
 class GenerateRulesDiffRequest(BaseModel):
-    old_code: str = Field(...)
-    new_code: str = Field(...)
+    old_code: str
+    new_code: str
+    module: str = ""
 
 
 class GenerateRulesChangelogRequest(BaseModel):
-    changelog_text: str = Field(...)
-    version: str = Field(...)
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Application lifespan manager."""
-    logger.info("Migration worker starting", port=os.environ.get("PORT", 8001))
-    yield
-    logger.info("Migration worker shutting down")
-
-
-app = FastAPI(
-    title="MigratorGen Migration Worker",
-    version="0.1.0",
-    description="Background migration processing service",
-    lifespan=lifespan,
-)
+    changelog_text: str
+    library_name: str = "unknown"
 
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint."""
     return {
         "status": "healthy",
         "service": "migration-worker",
@@ -76,64 +57,68 @@ async def health_check():
     }
 
 
-@app.post("/migrate/code")
-async def migrate_code(request: MigrateCodeRequest):
-    """Migrate source code using provided rules."""
+@app.post("/api/v1/migrate")
+async def migrate_code(req: MigrateCodeRequest):
     try:
-        rules = [MigrationRule.from_dict(r) for r in request.rules]
-        engine = TransactionalMigrationEngine(transactional=not request.dry_run)
-        result = engine.migrate_code(
-            request.source_code,
-            rules,
-            dry_run=request.dry_run,
+        rules = [Rule.from_dict(r) for r in req.rules]
+        result = _client.migrate_code(
+            req.source_code, rules,
+            source_version=req.source_version,
+            target_version=req.target_version,
+            dry_run=req.dry_run,
         )
         return {
+            "original_code": req.source_code,
             "transformed_code": result.transformed_code,
             "was_modified": result.was_modified,
             "changes": result.changes,
-            "confidence": result.overall_confidence,
-            "safety": result.safety_level.value if result.safety_level else "unknown",
+            "confidence": result.average_confidence,
+            "errors": result.errors,
         }
     except Exception as e:
         logger.exception("Migration failed")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/validate")
-async def validate_rules(request: ValidateRulesRequest):
-    """Validate migration rules."""
+@app.post("/api/v1/preview")
+async def preview_migration(req: PreviewRequest):
     try:
-        rules = [MigrationRule.from_dict(r) for r in request.rules]
-        validator = RuleValidator()
-        report = validator.validate_rules(rules)
-        return report.to_dict()
+        rules = [Rule.from_dict(r) for r in req.rules]
+        preview = _client.preview_migration(req.source_code, rules)
+        return {
+            "diff": preview.diff,
+            "change_count": preview.change_count,
+            "average_confidence": preview.average_confidence,
+        }
     except Exception as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/generate-rules-from-diff")
-async def generate_rules_from_diff(request: GenerateRulesDiffRequest):
-    """Auto-generate rules from code diff."""
-    analyzer = GitDiffAnalyzer(request.old_code, request.new_code)
-    rules = analyzer.analyze()
-    return {"rules": rules, "count": len(rules)}
+@app.post("/api/v1/generate-rules/diff")
+async def generate_rules_from_diff(req: GenerateRulesDiffRequest):
+    try:
+        rules = _client.generate_rules_from_diff(req.old_code, req.new_code, req.module)
+        return {"rules": [r.to_dict() for r in rules], "rule_count": len(rules)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/generate-rules-from-changelog")
-async def generate_rules_from_changelog(request: GenerateRulesChangelogRequest):
-    """Generate rules from changelog text."""
-    converter = ChangelogToRulesConverter(request.changelog_text, request.version)
-    rules = converter.convert()
-    return {"rules": rules, "count": len(rules)}
+@app.post("/api/v1/generate-rules/changelog")
+async def generate_rules_from_changelog(req: GenerateRulesChangelogRequest):
+    try:
+        result = _client.generate_rules_from_changelog(
+            req.changelog_text, req.library_name,
+        )
+        return {
+            "version": result.version,
+            "rules": [r.to_dict() for r in result.rules],
+            "rule_count": len(result.rules),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":
     import uvicorn
-
     port = int(os.environ.get("PORT", 8001))
-    uvicorn.run(
-        "backend.worker.src.main:app",
-        host="0.0.0.0",
-        port=port,
-        log_level=os.environ.get("LOG_LEVEL", "info"),
-    )
+    uvicorn.run(app, host="0.0.0.0", port=port)

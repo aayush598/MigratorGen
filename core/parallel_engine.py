@@ -78,7 +78,7 @@ class DiskCache:
     """Persistent cache stored on disk for AST results."""
 
     def __init__(self, cache_dir: Optional[Path] = None):
-        self.cache_dir = cache_dir or Path(tempfile.gettempdir()) / "migratorgen_cache"
+        self.cache_dir = cache_dir or Path(tempfile.gettempdir()) / "migrator_gen_cache"
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
     def _file_path(self, key: str) -> Path:

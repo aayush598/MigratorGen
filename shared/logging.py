@@ -27,7 +27,7 @@ class LogLevel(IntEnum):
 def setup_logging(
     app_env: str = "development",
     log_level: str = "INFO",
-    service_name: str = "migratorgen",
+    service_name: str = "migrator-gen",
     json_format: bool = True,
 ) -> None:
     """
@@ -82,7 +82,7 @@ class MigratorLogger:
     Structured logger for MigratorGen with context support.
     """
 
-    def __init__(self, name: str, service_name: str = "migratorgen"):
+    def __init__(self, name: str, service_name: str = "migrator-gen"):
         self.name = name
         self.service_name = service_name
         self._logger = logging.getLogger(name)
@@ -125,7 +125,7 @@ class MigratorLogger:
         self._log(logging.ERROR, msg, **kwargs)
 
 
-def get_logger(name: str, service_name: str = "migratorgen") -> MigratorLogger:
+def get_logger(name: str, service_name: str = "migrator-gen") -> MigratorLogger:
     """
     Get a configured logger instance.
 

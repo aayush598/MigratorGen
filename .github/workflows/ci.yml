@@ -9,7 +9,7 @@ on:
     - cron: '0 2 * * 1'
 
 env:
-  PYTHON_VERSION: '3.14'
+  PYTHON_VERSION: '3.12'
   DOCKER_BUILDKIT: 1
   CODECOV_FLAG: GHA
 
@@ -27,14 +27,16 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
 
-      - name: Install ruff
-        run: pip install ruff
+      - name: Install dependencies
+        run: |
+          pip install ruff
+          pip install -e "sdk/python[all]"
 
       - name: Run ruff check
-        run: ruff check backend/ mcp/ sdk/ tests/
+        run: ruff check core/ cli/ mcp/ sdk/ backend/ shared/ tests/
 
       - name: Check ruff format
-        run: ruff format --check backend/ mcp/ sdk/ tests/
+        run: ruff format --check core/ cli/ mcp/ sdk/ backend/ shared/ tests/
 
   typecheck:
     name: Type Check
@@ -53,9 +55,10 @@ jobs:
         run: |
           pip install mypy
           pip install -e .
+          pip install -e "sdk/python[all]"
 
       - name: Run mypy
-        run: mypy backend/ mcp/ tests/
+        run: mypy cli/ mcp/ sdk/python/ backend/ tests/
 
   test:
     name: Test
@@ -83,6 +86,7 @@ jobs:
           source .venv/bin/activate
           pip install --upgrade pip
           pip install -e ".[dev]"
+          pip install -e "sdk/python[all]"
           pip install -r requirements.txt 2>/dev/null || true
 
       - name: Run pytest with coverage

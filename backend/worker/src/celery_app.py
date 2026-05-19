@@ -9,7 +9,7 @@ from celery.schedules import crontab
 os.environ.setdefault("CELERY_CONFIG_MODULE", "backend.worker.src.celery_app")
 
 celery_app = Celery(
-    "migratorgen",
+    "migrator_gen",
     broker=os.environ.get("CELERY_BROKER_URL", "redis://localhost:6379/1"),
     backend=os.environ.get("CELERY_RESULT_BACKEND", "redis://localhost:6379/2"),
 )

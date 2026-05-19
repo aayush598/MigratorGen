@@ -1,4 +1,4 @@
-# MigratorGen — AI-Native Library Migration Platform
+# MigratorGen — Library Migration Platform
 
 > Automatically migrate Python code across library versions by parsing changelogs into structured, machine-executable rules. AST-accurate, transaction-safe, with REST API, MCP server, and parallel execution support.
 
@@ -12,7 +12,7 @@
 - [Installation](#installation)
 - [CLI Reference](#cli-reference)
 - [REST API](#rest-api)
-- [MCP Server (AI Agents)](#mcp-server-ai-agents)
+- [MCP Server](#mcp-server)
 - [Python API](#python-api)
 - [Supported Change Types](#supported-change-types)
 - [Advanced Features](#advanced-features)
@@ -121,7 +121,7 @@ migrator_platform/
 │   ├── llm_engine.py         # LLMSuggestionEngine (Anthropic/OpenAI)
 │   └── parallel_engine.py    # ParallelMigrationEngine, ASTCache, DiskCache
 ├── mcp/
-│   └── server.py             # MCP server (10 AI agent tools)
+│   └── server.py             # MCP server (10 tools)
 ├── libs/
 │   ├── shared/src/shared/    # Shared utilities (logging, exceptions, metrics, middleware, utils, database, cache)
 │   └── sdk/src/migratorsdk/  # Python SDK client (async/sync MigratorClient)
@@ -191,7 +191,7 @@ migrator_platform/
 │   ├── llm_engine.py        # LLMSuggestionEngine (Anthropic/OpenAI)
 │   └── parallel_engine.py   # ParallelMigrationEngine, ASTCache, DiskCache
 ├── mcp/
-│   └── server.py            # MCP server (10 AI agent tools)
+│   └── server.py            # MCP server (10 tools)
 ├── examples/
 │   ├── mylib_changelog.json    # Example with 12 rules across 4 versions
 │   └── sample_user_code.py     # Target Python file to migrate
@@ -341,15 +341,15 @@ curl -X POST http://localhost:8000/migrate \
 
 ---
 
-## MCP Server (AI Agents)
+## MCP Server
 
-Start the MCP server for AI agent integration:
+Start the MCP server for tool integration:
 
 ```bash
 python mcp/server.py
 ```
 
-The server exposes **10 tools** for AI agents (Claude, Copilot, etc.):
+The server exposes **10 tools** for MCP-compatible hosts:
 
 | Tool | Description |
 |---|---|
@@ -363,10 +363,6 @@ The server exposes **10 tools** for AI agents (Claude, Copilot, etc.):
 | `validate_rules` | Validate migration rules |
 | `list_versions` | List available versions |
 | `get_rule_details` | Get details of specific rules |
-
-### Example: Using with Claude
-
-In your Claude AI client, configure the MCP server URL and use the tools above to guide migrations.
 
 ---
 

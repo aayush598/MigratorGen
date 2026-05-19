@@ -922,7 +922,7 @@
   "refresh": "30s",
   "schemaVersion": 38,
   "style": "dark",
-  "tags": ["migratorgen", "monitoring"],
+  "tags": ["migrator_gen", "monitoring"],
   "templating": {
     "list": [
       {
@@ -953,7 +953,7 @@
   "timepicker": {},
   "timezone": "browser",
   "title": "MigratorGen Dashboard",
-  "uid": "migratorgen-main",
+  "uid": "migrator_gen-main",
   "version": 1,
   "weekStart": ""
 }
