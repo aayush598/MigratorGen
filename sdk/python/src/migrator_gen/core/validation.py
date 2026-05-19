@@ -1,8 +1,32 @@
 import ast
+import json
+from pathlib import Path
 
 from pydantic import BaseModel
 
 from .changelog_parser import ChangeType, MigrationRule
+
+
+def validate_rules_from_file(rules_file_path: str) -> ValidationReport:
+    """Load a rules file and validate all rules, returning a ValidationReport."""
+    path = Path(rules_file_path)
+    raw = path.read_text(encoding="utf-8")
+    if path.suffix in (".yaml", ".yml"):
+        try:
+            import yaml
+        except ImportError:
+            raise ImportError("PyYAML is required to load .yaml files")
+        data = yaml.safe_load(raw)
+    else:
+        data = json.loads(raw)
+
+    rules: list[MigrationRule] = []
+    for v in data.get("versions", []):
+        for r in v.get("rules", []):
+            rules.append(MigrationRule(**r))
+
+    validator = RuleValidator()
+    return validator.validate_rules(rules)
 
 
 class ValidationMessage(BaseModel):

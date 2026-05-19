@@ -71,7 +71,7 @@ all = [
 ]
 
 [project.scripts]
-migrator-gen = "cli.main:main"
+migrator-gen = "cli.cli.app:main"
 migrator-gen-mcp = "mcp.server:main"
 migrator-gen-api = "backend.api.src.server:main"
 
@@ -82,7 +82,7 @@ Documentation = "https://migrator-gen.readthedocs.io"
 Changelog = "https://github.com/migrator-gen/migrator-gen/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
-where = ["cli", "mcp", "shared", "backend"]
+where = ["cli/src", "mcp", "shared", "backend"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
