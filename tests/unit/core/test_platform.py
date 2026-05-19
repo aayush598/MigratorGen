@@ -11,7 +11,7 @@ from copy import deepcopy
 
 import sys
 
-ROOT = str(Path(__file__).resolve().parent.parent.parent.parent / "sdk" / "python")
+ROOT = str(Path(__file__).resolve().parent.parent.parent.parent / "sdk" / "python" / "src" / "migrator_gen")
 sys.path.insert(0, ROOT)
 
 from core.changelog_parser import (
