@@ -206,9 +206,10 @@ class LocalMigrationService:
             _require("generate_rules_from_changelog")
             raise
         try:
-            result = generate_from_changelog(changelog_text, library_name)
-            rules = [self._to_sdk_rule(r) for r in result.get("rules", [])]
-            return m.VersionChangelog(version=result.get("version", "0.0.0"), release_date=result.get("release_date", ""), rules=rules)
+            rules_data = generate_from_changelog(changelog_text, library_name)
+            rules = [self._to_sdk_rule(r) for r in rules_data]
+            version = rules_data[0].get("version_introduced", "0.0.0") if rules_data else "0.0.0"
+            return m.VersionChangelog(version=version, release_date="", rules=rules)
         except Exception as exc:
             raise MigrationParseError(f"Failed to generate rules from changelog: {exc}") from exc
 
