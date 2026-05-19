@@ -21,23 +21,32 @@ install-dev: install install-sdk ## Install everything with dev extras
 test: ## Run tests
 	$(PYTEST) tests/ -v
 
+test-sdk: ## Run SDK tests
+	$(PYTEST) sdk/python/tests/ -v
+
 test-cov: ## Run tests with coverage report
-	$(PYTEST) --cov=core --cov=migrator_gen --cov-report=html --cov-report=term tests/
+	$(PYTEST) --cov=core --cov=migrator_gen --cov-report=html --cov-report=term tests/ sdk/python/tests/
 
 lint: ## Run ruff linter
-	ruff check core/ cli/ mcp/ sdk/ backend/ shared/ tests/
+	ruff check sdk/python/core/ sdk/python/migrator_gen/ cli/ mcp/ backend/ shared/ tests/
 
 lint-fix: ## Run ruff linter with auto-fix
-	ruff check --fix core/ cli/ mcp/ sdk/ backend/ shared/ tests/
+	ruff check --fix sdk/python/core/ sdk/python/migrator_gen/ cli/ mcp/ backend/ shared/ tests/
 
 format: ## Format code with ruff
-	ruff format core/ cli/ mcp/ sdk/ backend/ shared/ tests/
+	ruff format sdk/python/core/ sdk/python/migrator_gen/ cli/ mcp/ backend/ shared/ tests/
 
 typecheck: ## Run mypy type checker
-	mypy cli/ mcp/ sdk/python/ backend/ --ignore-missing-imports
+	mypy sdk/python/migrator_gen/ sdk/python/core/ cli/ mcp/ backend/ --ignore-missing-imports
 
 security: ## Run security scans with Bandit
 	bandit -r cli/ mcp/ backend/ -f screen
+
+sdk-test: ## Run SDK's own test suite
+	cd sdk/python && $(PYTEST) tests/ -v
+
+sdk-lint: ## Lint SDK only
+	ruff check sdk/python/core/ sdk/python/migrator_gen/ sdk/python/tests/
 
 # ── Application runners ──────────────────────────────────────
 

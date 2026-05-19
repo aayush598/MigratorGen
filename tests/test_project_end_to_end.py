@@ -26,7 +26,7 @@ sys.path.insert(0, str(_WORKSPACE / "cli"))
 sys.path.insert(0, str(_WORKSPACE / "mcp"))
 sys.path.insert(0, str(_WORKSPACE / "backend" / "api" / "src"))
 sys.path.insert(0, str(_WORKSPACE / "backend" / "worker" / "src"))
-sys.path.insert(0, str(_WORKSPACE))  # for core module
+sys.path.insert(0, str(_WORKSPACE / "sdk" / "python"))  # for core module
 
 FAILURES: list[str] = []
 

@@ -1,25 +1,27 @@
 [project]
 name = "migrator-gen"
 version = "0.2.0"
-description = "Python SDK for MigratorGen — migrate Python code across library versions"
+description = "Python SDK for MigratorGen — automatically migrate Python code across library versions"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
-    {name = "MigratorGen Team", email = "dev@migrator-gen.io"},
+    {name = "MigratorGen", email = "dev@migrator-gen.io"},
 ]
-keywords = ["migrator-gen", "migration", "codemod", "codemodder", "libcst", "sdk"]
+keywords = ["migrator-gen", "migration", "codemod", "libcst", "sdk", "ast"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
-    "Topic :: Software Development :: Code Generators",
     "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Utilities",
+    "Typing :: Typed",
 ]
 
 dependencies = [
@@ -28,20 +30,14 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-local = [
-    "libcst>=1.0.0",
-]
-remote = [
-    "httpx>=0.27.0",
-    "tenacity>=8.0.0",
-]
-all = [
-    "migrator-gen[local,remote]",
-]
+local = ["libcst>=1.0.0"]
+remote = ["httpx>=0.27.0"]
+all = ["migrator-gen[local,remote]"]
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
     "ruff>=0.3",
+    "mypy>=1.8",
 ]
 
 [project.urls]
@@ -54,4 +50,24 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["migrator_gen"]
+packages = ["src/migrator_gen"]
+
+[tool.hatch.build.targets.sdist]
+include = ["/src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v --tb=short"
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+lint.select = ["E", "F", "W", "I", "N", "UP", "B", "C4"]
+lint.ignore = ["E501"]
+lint.per-file-ignores = {"__init__.py" = ["F401"]}
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true

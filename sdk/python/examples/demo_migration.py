@@ -1,14 +1,10 @@
-import sys
 import json
 from pathlib import Path
 
-ROOT = str(Path(__file__).resolve().parent.parent / "sdk" / "python")
-sys.path.insert(0, ROOT)
-
-from core.changelog_parser import ChangelogParser, MigrationRule, ChangeType
-from core.version_resolver import VersionResolver
-from core.migration_engine import MigrationEngine
-from core.migrator_generator import MigratorGenerator
+from migrator_gen.core.changelog_parser import ChangelogParser, MigrationRule, ChangeType
+from migrator_gen.core.version_resolver import VersionResolver
+from migrator_gen.core.migration_engine import MigrationEngine
+from migrator_gen.core.migrator_generator import MigratorGenerator
 
 # Load example JSON changelog
 examples_dir = Path(__file__).resolve().parent

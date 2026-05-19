@@ -82,7 +82,7 @@ Documentation = "https://migrator-gen.readthedocs.io"
 Changelog = "https://github.com/migrator-gen/migrator-gen/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
-where = ["core", "cli", "mcp", "shared", "backend"]
+where = ["cli", "mcp", "shared", "backend"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

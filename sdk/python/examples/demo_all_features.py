@@ -15,24 +15,20 @@ Demonstrates all major features of the migration platform:
 10. MCP server
 """
 
-import sys
 import json
 from pathlib import Path
 
-ROOT = str(Path(__file__).resolve().parent.parent / "sdk" / "python")
-sys.path.insert(0, ROOT)
-
 EXAMPLES_DIR = Path(__file__).resolve().parent
 
-from core.changelog_parser import ChangelogParser, MigrationRule, ChangeType
-from core.version_resolver import VersionResolver
-from core.migration_engine import TransactionalMigrationEngine
-from core.migrator_generator import MigratorGenerator
-from core.validation import RuleValidator, RuleDependencyGraph, IdempotencyChecker
-from core.diff_analyzer import generate_from_changelog, generate_from_git_diff
-from core.symbol_resolver import SymbolResolver, ImportGraph, ConfidenceScorer
-from core.llm_engine import LLMSuggestionEngine, suggest_migrations
-from core.parallel_engine import ParallelMigrationEngine
+from migrator_gen.core.changelog_parser import ChangelogParser, MigrationRule, ChangeType
+from migrator_gen.core.version_resolver import VersionResolver
+from migrator_gen.core.migration_engine import TransactionalMigrationEngine
+from migrator_gen.core.migrator_generator import MigratorGenerator
+from migrator_gen.core.validation import RuleValidator, RuleDependencyGraph, IdempotencyChecker
+from migrator_gen.core.diff_analyzer import generate_from_changelog, generate_from_git_diff
+from migrator_gen.core.symbol_resolver import SymbolResolver, ImportGraph, ConfidenceScorer
+from migrator_gen.core.llm_engine import LLMSuggestionEngine, suggest_migrations
+from migrator_gen.core.parallel_engine import ParallelMigrationEngine
 
 
 def banner(msg: str) -> None:
@@ -45,7 +41,8 @@ def demo_parse_changelog() -> None:
     banner("1. Parse Changelog")
 
     parser = ChangelogParser()
-    content = EXAMPLES_DIR / "mylib_changelog.json".read_text()
+    examples_dir = Path(__file__).resolve().parent
+    content = (examples_dir / "mylib_changelog.json").read_text()
     changelogs = parser.parse(content, fmt="json")
 
     print(f"Parsed {len(changelogs)} version(s):")

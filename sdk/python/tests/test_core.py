@@ -1,68 +1,64 @@
 """
-Comprehensive tests for MigratorGen Platform.
-Run with: python -m pytest tests/test_platform.py -v
+Comprehensive tests for MigratorGen core module.
+Run with: python -m pytest tests/test_core.py -v
 """
 
-import pytest
 import json
+
 import libcst as cst
-from pathlib import Path
-from copy import deepcopy
+import pytest
 
-import sys
-
-ROOT = str(Path(__file__).resolve().parent.parent.parent.parent / "sdk" / "python")
-sys.path.insert(0, ROOT)
-
-from core.changelog_parser import (
-    ChangelogParser, MigrationRule, ChangeType, VersionChangelog,
-    MigrationFile, RuleWhenCondition,
+from migrator_gen.core.changelog_parser import (
+    ChangelogParser,
+    ChangeType,
+    MigrationRule,
+    RuleWhenCondition,
+    VersionChangelog,
 )
-from core.version_resolver import VersionResolver, MigrationPath
-from core.migration_engine import (
-    TransactionalMigrationEngine, MigrationReport, TransformResult,
-    RuleApplicationResult, SafetyLevel, ChangeRecord,
-)
-from core.transformers import (
-    get_transformer, TRANSFORMER_MAP, BaseTransformer,
-    RenameFunctionTransformer, RenameClassTransformer,
-    RenameImportTransformer, RenameAttributeTransformer,
-    AddArgumentTransformer, RemoveArgumentTransformer,
-    ChangeArgumentDefaultTransformer, ReorderArgumentsTransformer,
-    DeprecateFunctionTransformer, MoveToModuleTransformer,
-    AddDecoratorTransformer, RemoveDecoratorTransformer,
-    ReplaceWithPropertyTransformer, RenameArgumentTransformer,
-)
-from core.validation import (
-    RuleValidator, ValidationReport, RuleDependencyGraph,
-    IdempotencyChecker, CAPABILITIES,
-)
-from core.symbol_resolver import (
-    SymbolResolver, ImportGraph, Symbol, SymbolKind,
-    ScopeAwareTransformer, ConfidenceScorer,
-)
-from core.diff_analyzer import (
-    GitDiffAnalyzer, ChangelogToRulesConverter,
-    generate_from_git_diff, generate_from_changelog, export_rules,
+from migrator_gen.core.diff_analyzer import (
     ASTExtractor,
+    ChangelogToRulesConverter,
+    GitDiffAnalyzer,
+    export_rules,
+    generate_from_git_diff,
 )
-from core.llm_engine import (
-    LLMSuggestionEngine, MigrationSuggestion,
-    SuggestionConfidence, BreakingChange,
+from migrator_gen.core.llm_engine import (
+    BreakingChange,
+    LLMSuggestionEngine,
 )
-from core.parallel_engine import (
-    ParallelMigrationEngine, ParallelMigrationReport,
-    ASTCache, DiskCache, _migrate_file_worker,
+from migrator_gen.core.migration_engine import (
+    MigrationReport,
+    SafetyLevel,
+    TransactionalMigrationEngine,
 )
-from core.transformers_advanced import (
-    SyncToAsyncTransformer, WrapInContextManagerTransformer,
-    ClassSplitTransformer, ModuleSplitTransformer,
-    ChangeReturnTypeTransformer, EnumMigrationTransformer,
-    DataclassFieldChangeTransformer, ImportCleanupTransformer,
-    RemoveRedundantPassTransformer, SimplifyExpressionTransformer,
-    DeadCodeRemovalTransformer, ContextManagerBodyTransformer,
+from migrator_gen.core.parallel_engine import (
+    ASTCache,
+    ParallelMigrationReport,
 )
-
+from migrator_gen.core.symbol_resolver import (
+    ConfidenceScorer,
+    ImportGraph,
+    SymbolResolver,
+)
+from migrator_gen.core.transformers import (
+    TRANSFORMER_MAP,
+    get_transformer,
+)
+from migrator_gen.core.transformers_advanced import (
+    ChangeReturnTypeTransformer,
+    ImportCleanupTransformer,
+    ModuleSplitTransformer,
+    RemoveRedundantPassTransformer,
+    SyncToAsyncTransformer,
+    WrapInContextManagerTransformer,
+)
+from migrator_gen.core.validation import (
+    CAPABILITIES,
+    IdempotencyChecker,
+    RuleDependencyGraph,
+    RuleValidator,
+)
+from migrator_gen.core.version_resolver import VersionResolver
 
 # ==============================================================================
 # Test Helpers
@@ -195,7 +191,7 @@ class TestChangelogParserBasics:
         assert len(merged) == 0
 
     def test_version_key_sorting(self):
-        from core.changelog_parser import _version_key
+        from migrator_gen.core.changelog_parser import _version_key
         versions = ["1.10.0", "2.0.0", "1.9.0", "1.2.1", "0.9.9"]
         sorted_v = sorted(versions, key=_version_key)
         assert sorted_v == ["0.9.9", "1.2.1", "1.9.0", "1.10.0", "2.0.0"]
@@ -1225,7 +1221,6 @@ class TestLLMSuggestionEngine:
 
 class TestBreakingChange:
     def test_breaking_change_fields(self):
-        from core.llm_engine import BreakingChange
         bc = BreakingChange(
             description="Test change",
             severity="high",
