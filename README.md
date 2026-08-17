@@ -39,23 +39,23 @@
 # 1. Setup
 git clone <repo-url>
 cd migrator_platform
-make dev          # Creates .venv, installs dependencies, sets up pre-commit
+make install-dev     # Creates .venv, installs all dependencies
 
 # 2. Run demo
-python demo_all_features.py
+python examples/demo_all_features.py
 
 # 3. Run tests
-make test         # 186 test cases (131 core + 55 shared)
-make lint         # ruff linter + formatter
+make test            # 186 test cases (131 core + 55 shared)
+make lint            # ruff linter
 
 # 4. Create a migrator
-python cli/cli.py create --changelog examples/mylib_changelog.json --library mylib
+migrator-gen create --changelog examples/mylib_changelog.json --library mylib
 
 # 5. Start REST API
-make docker-up && curl http://localhost:8000/health
+make docker-up && make health
 
 # 6. Start MCP server
-python mcp/server.py
+migrator-gen-mcp
 ```
 
 ---
@@ -104,54 +104,75 @@ Your Changelog (JSON)
 
 ```
 migrator_platform/
-├── api/
-│   └── server.py              # FastAPI REST API (15 endpoints)
-├── cli/
-│   └── cli.py                # Main CLI (create, run, preview, rules, interactive)
-├── core/
-│   ├── changelog_parser.py   # MigrationRule, ChangeType, RuleWhenCondition, VersionChangelog
-│   ├── version_resolver.py   # VersionResolver, MigrationPath
-│   ├── migration_engine.py   # TransactionalMigrationEngine, MigrationReport
-│   ├── migrator_generator.py # Generates standalone migrator package
-│   ├── transformers.py       # LibCST transformers (16 base types)
-│   ├── transformers_advanced.py  # 7 advanced transformers (async, context, split, etc.)
-│   ├── validation.py        # RuleValidator, IdempotencyChecker, RuleDependencyGraph
-│   ├── symbol_resolver.py    # SymbolResolver, ImportGraph, ConfidenceScorer
-│   ├── diff_analyzer.py      # GitDiffAnalyzer, ChangelogToRulesConverter
-│   ├── llm_engine.py         # LLMSuggestionEngine (Anthropic/OpenAI)
-│   └── parallel_engine.py    # ParallelMigrationEngine, ASTCache, DiskCache
-├── mcp/
-│   └── server.py             # MCP server (10 tools)
-├── libs/
-│   ├── shared/src/shared/    # Shared utilities (logging, exceptions, metrics, middleware, utils, database, cache)
-│   └── sdk/src/migratorsdk/  # Python SDK client (async/sync MigratorClient)
-├── services/
-│   ├── api/app.py            # FastAPI service with async file processing, WebSocket streaming
-│   ├── migration/app.py      # Migration service with progress tracking
-│   └── tasks/                # Celery task definitions (migration_tasks.py, celery_app.py)
+├── sdk/python/src/migrator_gen/   # Core SDK library
+│   ├── core/                      # Migration engine modules
+│   │   ├── changelog_parser.py    # MigrationRule, ChangeType, VersionChangelog
+│   │   ├── version_resolver.py    # VersionResolver, MigrationPath
+│   │   ├── migration_engine.py    # TransactionalMigrationEngine, MigrationReport
+│   │   ├── migrator_generator.py  # Generates standalone migrator package
+│   │   ├── transformers.py        # LibCST transformers (16 base types)
+│   │   ├── transformers_advanced.py  # 7 advanced transformers
+│   │   ├── validation.py         # RuleValidator, IdempotencyChecker, RuleDependencyGraph
+│   │   ├── symbol_resolver.py     # SymbolResolver, ImportGraph, ConfidenceScorer
+│   │   ├── diff_analyzer.py       # GitDiffAnalyzer, ChangelogToRulesConverter
+│   │   ├── llm_engine.py          # LLMSuggestionEngine (Anthropic/OpenAI)
+│   │   └── parallel_engine.py     # ParallelMigrationEngine, ASTCache, DiskCache
+│   ├── api/                       # REST clients (async + sync)
+│   ├── services/                  # Local and remote service backends
+│   ├── config/                    # SDK configuration (SDKConfig)
+│   └── exceptions/                # SDK exception hierarchy
+├── cli/src/cli/                   # CLI package (migrator-gen)
+│   ├── app.py                     # main() entrypoint
+│   ├── commands/                  # CLI subcommands (create, migrate, preview, rules, etc.)
+│   └── services/                  # CLI service layer
+├── mcp/src/migrator_gen_mcp/      # MCP server (migrator-gen-mcp)
+│   ├── server/
+│   │   ├── app.py                 # MCP server class + main() entrypoint
+│   │   ├── handlers.py            # Tool handler implementations
+│   │   └── tools.py               # MCPTool definitions and registry
+│   ├── transport/                 # stdio and HTTP transports
+│   └── config/                    # MCP server settings
+├── backend/                       # Backend services
+│   ├── api/src/
+│   │   ├── server.py              # Full-featured FastAPI REST API (13+ endpoints)
+│   │   └── main.py                # Minimal FastAPI app (containerized deployments)
+│   └── worker/src/
+│       ├── celery_app.py          # Celery app config (Redis broker)
+│       ├── run.py                 # Worker entry point
+│       └── tasks/                 # Celery task definitions
+├── shared/                        # Shared utilities package (migrators-shared)
+│   ├── logging.py                 # Structured JSON logging with structlog
+│   ├── exceptions.py              # RFC 7807 Problem Details exceptions + Sentry
+│   ├── metrics.py                 # Prometheus metrics collector
+│   ├── middleware.py               # CORS, rate limiting, request ID injection
+│   ├── utils.py                   # File validation, hashing, retry, datetime utils
+│   ├── database.py                # Async SQLAlchemy models + connection pooling
+│   └── cache.py                   # Async Redis cache manager with TTL
 ├── examples/
-│   ├── mylib_changelog.json    # Example with 12 rules across 4 versions
-│   └── sample_user_code.py     # Target Python file to migrate
-├── migration_packs/
-│   ├── pydantic.json       # 20 rules for Pydantic v1→v2 migration
-│   ├── fastapi.json        # 4 rules for FastAPI migration
-│   └── httpx.json          # 3 rules for httpx migration
+│   ├── mylib_changelog.json       # Example changelog (4 versions, 11 rules)
+│   ├── sample_user_code.py        # Sample target file to migrate
+│   └── demo_all_features.py       # Demo of all 17 features
+├── migration-packs/               # Pre-built rule sets
+│   ├── pydantic.json              # 20 rules for Pydantic v1→v2
+│   ├── fastapi.json               # 4 rules for FastAPI migration
+│   └── httpx.json                 # 3 rules for httpx migration
 ├── tests/
-│   ├── test_platform.py    # 131 test cases covering core modules
-│   └── test_shared.py      # 55 test cases covering libs/shared
-├── .github/workflows/      # GitHub Actions CI (release, deploy, security)
-├── Makefile               # Development shortcuts (dev, test, lint, docker-*, celery, flower)
-├── CONTRIBUTING.md         # Contribution guidelines
-├── CHANGELOG.md            # Project changelog
-├── LICENSE                 # MIT license
-├── .env.example            # Environment variables template
-├── .env.test               # Test environment variables
+│   ├── unit/core/test_platform.py # 131 test cases covering all core modules
+│   ├── unit/packages/test_shared.py # 55 test cases covering shared utilities
+│   └── test_project_end_to_end.py # End-to-end integration tests
+├── infra/docker/                  # Docker + docker-compose + K8s manifests
+├── .github/workflows/             # CI (lint, typecheck, test, security, docker-build)
+├── Makefile                       # Development shortcuts
+├── pyproject.toml                 # Project metadata, ruff, mypy, pytest config
+├── CONTRIBUTING.md                # Contribution guidelines
+├── CHANGELOG.md                   # Project changelog
+├── LICENSE                        # MIT license
 └── README.md
 ```
 
-## libs/shared — Shared Utilities
+## Shared Utilities
 
-Reusable components across all services (`libs/shared/src/shared/`):
+Reusable components across all services (`shared/`):
 
 | Module | Description |
 |---|---|
@@ -163,50 +184,15 @@ Reusable components across all services (`libs/shared/src/shared/`):
 | `database.py` | Async SQLAlchemy models (MigrationJob, MigrationSession) with connection pooling |
 | `cache.py` | Async Redis cache manager with JSON serialization and TTL |
 
-## libs/sdk — Python SDK
+## Python SDK
 
-`MigratorClient` (async) and `SyncMigratorClient` for programmatic API access:
+`MigrationClient` (async) and `SyncMigrationClient` for programmatic API access:
 
 ```python
-from migratorsdk.client import MigratorClient
+from migrator_gen import MigrationClient
 
-client = MigratorClient(base_url="http://localhost:8000")
-result = await client.migrate(code, rules, from_version, to_version)
-```
-migrator_platform/
-├── api/
-│   └── server.py              # FastAPI REST API (15 endpoints)
-├── cli/
-│   └── cli.py                # Main CLI (create, run, preview, rules, interactive)
-├── core/
-│   ├── changelog_parser.py   # MigrationRule, ChangeType, RuleWhenCondition, VersionChangelog
-│   ├── version_resolver.py   # VersionResolver, MigrationPath
-│   ├── migration_engine.py   # TransactionalMigrationEngine, MigrationReport
-│   ├── migrator_generator.py # Generates standalone migrator package
-│   ├── transformers.py       # LibCST transformers (16 base types)
-│   ├── transformers_advanced.py  # 7 advanced transformers (async, context, split, etc.)
-│   ├── validation.py        # RuleValidator, IdempotencyChecker, RuleDependencyGraph
-│   ├── symbol_resolver.py   # SymbolResolver, ImportGraph, ConfidenceScorer
-│   ├── diff_analyzer.py     # GitDiffAnalyzer, ChangelogToRulesConverter
-│   ├── llm_engine.py        # LLMSuggestionEngine (Anthropic/OpenAI)
-│   └── parallel_engine.py   # ParallelMigrationEngine, ASTCache, DiskCache
-├── mcp/
-│   └── server.py            # MCP server (10 tools)
-├── examples/
-│   ├── mylib_changelog.json    # Example with 12 rules across 4 versions
-│   └── sample_user_code.py     # Target Python file to migrate
-├── migration_packs/
-│   ├── pydantic.json       # 20 rules for Pydantic v1→v2 migration
-│   ├── fastapi.json        # 4 rules for FastAPI migration
-│   └── httpx.json         # 3 rules for httpx migration
-├── tests/
-│   └── test_platform.py    # 131 test cases covering all modules
-├── demo_all_features.py     # 17-feature demo script
-├── generated_migrator/      # Output of `cli create`
-├── .github/workflows/      # GitHub Actions CI
-├── .pre-commit-config.yaml # Pre-commit hooks
-├── pyproject.toml          # Project metadata, ruff, mypy, pytest config
-└── README.md
+client = MigrationClient(mode="local")
+result = client.migrate(code, rules, source_version="1.0.0", target_version="2.0.0")
 ```
 
 ---
@@ -219,28 +205,21 @@ migrator_platform/
 # Clone and enter directory
 cd migrator_platform
 
-# Create virtual environment and install dependencies
-make dev
+# Create virtual environment and install everything
+make install-dev
 
 # Or manually:
 uv venv .venv && source .venv/bin/activate
-uv pip install -r requirements.txt
+make install-sdk          # Install migrator_gen SDK
+uv pip install -e ".[dev]"  # Install workspace with dev extras
 ```
 
-**Core dependencies** (`requirements.txt`):
+**Core dependencies** (`pyproject.toml`):
+
 | Package | Purpose |
 |---|---|
 | `libcst>=1.0.0` | Concrete Syntax Tree — powers all code transformations |
-| `pydantic>=2.0` | Rule/schema validation models |
-| `fastapi>=0.100` | REST API server |
-| `uvicorn>=0.23` | ASGI server for FastAPI |
-| `pytest>=7.0` | Testing |
-| `httpx` | HTTP client for LLM API calls |
-
-**Install all packages** (including API/MCP extras):
-```bash
-uv pip install -e .
-```
+| `pydantic>=2.0.0` | Rule/schema validation models |
 
 ---
 
@@ -248,23 +227,23 @@ uv pip install -e .
 
 ```bash
 source .venv/bin/activate
-python cli/cli.py <command>
+migrator-gen <command>
 ```
 
 ### `create` — Build a Migrator Package
 
 ```bash
-python cli/cli.py create \
+migrator-gen create \
   --changelog examples/mylib_changelog.json \
   --library mylib \
-  --output ./generated_migrator
+  --output ./generated
 ```
 
-### `run` — Migrate Code
+### `migrate` — Migrate Code
 
 ```bash
-python cli/cli.py run \
-  --rules generated_migrator/migration_rules.json \
+migrator-gen migrate \
+  --rules generated/migration_rules.json \
   --from 1.0.0 \
   --to 3.0.0 \
   ./myproject/
@@ -273,8 +252,8 @@ python cli/cli.py run \
 ### `preview` — Dry-run a File
 
 ```bash
-python cli/cli.py preview \
-  --rules generated_migrator/migration_rules.json \
+migrator-gen preview \
+  --rules generated/migration_rules.json \
   --from 1.0.0 \
   --to 2.0.0 \
   examples/sample_user_code.py
@@ -283,13 +262,13 @@ python cli/cli.py preview \
 ### `rules` — Inspect Rules
 
 ```bash
-python cli/cli.py rules --rules generated_migrator/migration_rules.json
+migrator-gen rules --rules generated/migration_rules.json
 ```
 
 ### `interactive` — Manual Rule Builder
 
 ```bash
-python cli/cli.py interactive --output my_rules.json
+migrator-gen interactive --output my_rules.json
 ```
 
 ---
@@ -298,9 +277,11 @@ python cli/cli.py interactive --output my_rules.json
 
 Start the server:
 ```bash
-python api/server.py
-# or with uvicorn:
-uvicorn api.server:app --host 0.0.0.0 --port 8000 --reload
+# Using make
+make run-api
+
+# Or directly
+uvicorn backend.api.src.server:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 The API is available at `http://localhost:8000`. Interactive docs at `http://localhost:8000/docs`.
@@ -309,33 +290,31 @@ The API is available at `http://localhost:8000`. Interactive docs at `http://loc
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/` | API health check |
-| `GET` | `/health` | Detailed health status |
-| `POST` | `/parse` | Parse a changelog JSON |
-| `POST` | `/resolve` | Resolve migration path |
-| `POST` | `/migrate` | Migrate code string with rules |
-| `POST` | `/migrate-file` | Migrate a file |
-| `POST` | `/preview` | Preview migration as unified diff |
-| `POST` | `/validate` | Validate rules |
-| `POST` | `/generate-rules` | Auto-generate rules from changelog text |
-| `POST` | `/rules-from-diff` | Auto-generate rules from git diff |
-| `GET` | `/versions` | List available versions |
-| `GET` | `/rules` | List all rules |
-| `POST` | `/export` | Export rules to JSON |
-| `POST` | `/parallel-migrate` | Migrate directory in parallel |
-| `GET` | `/capabilities` | List all registered change types |
+| `GET` | `/health` | Health check |
+| `POST` | `/api/v1/migrate` | Migrate code string with rules |
+| `POST` | `/api/v1/migrate/file` | Migrate an uploaded file |
+| `POST` | `/api/v1/preview` | Preview migration as unified diff |
+| `POST` | `/api/v1/validate` | Validate rules from a file |
+| `POST` | `/api/v1/generate-rules/changelog` | Auto-generate rules from changelog text |
+| `POST` | `/api/v1/generate-rules/diff` | Auto-generate rules from git diff |
+| `POST` | `/api/v1/suggest` | Suggest migrations for a file |
+| `POST` | `/api/v1/resolve-path` | Resolve migration path between versions |
+| `GET` | `/api/v1/libraries` | List available libraries |
+| `POST` | `/api/v1/parse-changelog` | Parse a changelog file |
+| `POST` | `/api/v1/generate-package` | Generate a standalone migrator package |
+| `POST` | `/api/v1/dependencies/check` | Check if migrations exist for dependencies |
 
 ### Example: Migrate via API
 
 ```bash
-curl -X POST http://localhost:8000/migrate \
+curl -X POST http://localhost:8000/api/v1/migrate \
   -H "Content-Type: application/json" \
   -d '{
-    "code": "Client()",
+    "source_code": "Client()",
     "rules": [{"id": "R1", "change_type": "rename_class", "version_introduced": "2.0.0",
       "description": "Rename", "old_name": "Client", "new_name": "APIClient"}],
-    "from_version": "1.0.0",
-    "to_version": "2.0.0"
+    "source_version": "1.0.0",
+    "target_version": "2.0.0"
   }'
 ```
 
@@ -346,33 +325,34 @@ curl -X POST http://localhost:8000/migrate \
 Start the MCP server for tool integration:
 
 ```bash
-python mcp/server.py
+migrator-gen-mcp
+# or with HTTP transport:
+migrator-gen-mcp --transport http --port 8001
 ```
 
 The server exposes **10 tools** for MCP-compatible hosts:
 
 | Tool | Description |
 |---|---|
-| `migrate_code` | Apply migration rules to code |
-| `migrate_file` | Migrate a Python file |
-| `preview_migration` | Get unified diff preview |
-| `parse_changelog` | Parse a changelog file |
-| `resolve_migration_path` | Resolve version upgrade/downgrade path |
-| `generate_rules_from_diff` | Auto-generate rules from git diff |
-| `generate_rules_from_changelog` | Parse changelog text into rules |
-| `validate_rules` | Validate migration rules |
-| `list_versions` | List available versions |
-| `get_rule_details` | Get details of specific rules |
+| `generate_rules` | Generate migration rules from a changelog or by comparing old and new code |
+| `preview_migration` | Preview migration changes as a unified diff |
+| `run_migration` | Apply migration rules to source code |
+| `validate_rules` | Validate migration rules from a file |
+| `analyze_code` | Analyse source code: extract imports, functions, classes |
+| `suggest_migrations` | Analyse a file and suggest migration packs that apply |
+| `list_libraries` | List libraries with available migration packs |
+| `explain_breaking_changes` | Explain breaking changes from a set of rules in human-readable terms |
+| `resolve_path` | Resolve the migration path between two versions of a library |
+| `create_migrator` | Generate a standalone pip-installable migrator package |
 
 ---
 
 ## Python API
 
 ```python
-from pathlib import Path
-from core.changelog_parser import ChangelogParser, MigrationRule, ChangeType
-from core.version_resolver import VersionResolver
-from core.migration_engine import TransactionalMigrationEngine
+from migrator_gen.core.changelog_parser import ChangelogParser, MigrationRule, ChangeType
+from migrator_gen.core.version_resolver import VersionResolver
+from migrator_gen.core.migration_engine import TransactionalMigrationEngine
 
 # 1. Parse
 parser = ChangelogParser()
@@ -491,15 +471,14 @@ Rules can declare execution order:
 - **Dry-run mode**: Preview changes without file modification
 
 ```python
-from core.migration_engine import TransactionalMigrationEngine, SafetyLevel
+from migrator_gen.core.migration_engine import TransactionalMigrationEngine, SafetyLevel
 
 engine = TransactionalMigrationEngine()
 result = engine.migrate_code(code, rules, dry_run=False)
 
-print(f"Confidence: {result.overall_confidence}")
-print(f"Safety: {result.safety_level}")
+print(f"Confidence: {result.average_confidence}")
 print(f"Changes: {result.changes}")
-print(f"Rollback used: {result.rollback_used}")
+print(f"Modified: {result.was_modified}")
 ```
 
 ### Validation & Safety
@@ -507,7 +486,7 @@ print(f"Rollback used: {result.rollback_used}")
 `RuleValidator` validates all rules before migration:
 
 ```python
-from core.validation import RuleValidator
+from migrator_gen.core.validation import RuleValidator
 
 validator = RuleValidator()
 report = validator.validate_rules(rules)
@@ -526,7 +505,7 @@ Checks include:
 
 `IdempotencyChecker` verifies rules produce identical output when applied twice:
 ```python
-from core.validation import IdempotencyChecker
+from migrator_gen.core.validation import IdempotencyChecker
 is_safe = IdempotencyChecker.check_rule_idempotency(rule, code, None)
 ```
 
@@ -535,7 +514,7 @@ is_safe = IdempotencyChecker.check_rule_idempotency(rule, code, None)
 `SymbolResolver` uses LibCST metadata providers (`ScopeProvider`, `QualifiedNameProvider`) for accurate, scope-aware symbol resolution:
 
 ```python
-from core.symbol_resolver import SymbolResolver
+from migrator_gen.core.symbol_resolver import SymbolResolver
 
 resolver = SymbolResolver(code)
 resolver._build_import_graph()
@@ -546,11 +525,9 @@ src = resolver._import_graph.import_sources.get("Client")
 `ConfidenceScorer` rates rule confidence based on change type and scope:
 
 ```python
-from core.symbol_resolver import ConfidenceScorer
+from migrator_gen.core.symbol_resolver import ConfidenceScorer
 
-scorer = ConfidenceScorer()
-score = scorer.score_rule(rule, code)
-# -> "high", "medium", or "low"
+score = ConfidenceScorer.score_import_change(stmt, "mylib", "Client")
 ```
 
 ### Auto-Rule Generation from Git Diffs
@@ -558,7 +535,7 @@ score = scorer.score_rule(rule, code)
 `GitDiffAnalyzer` automatically extracts migration rules from code diffs:
 
 ```python
-from core.diff_analyzer import GitDiffAnalyzer
+from migrator_gen.core.diff_analyzer import GitDiffAnalyzer
 
 analyzer = GitDiffAnalyzer(old_code, new_code)
 rules = analyzer.analyze()
@@ -568,7 +545,7 @@ rules = analyzer.analyze()
 `ChangelogToRulesConverter` parses human-readable changelog text:
 
 ```python
-from core.diff_analyzer import ChangelogToRulesConverter
+from migrator_gen.core.diff_analyzer import ChangelogToRulesConverter
 
 converter = ChangelogToRulesConverter(
     text="renamed Client to APIClient\nadded timeout parameter",
@@ -582,10 +559,13 @@ rules = converter.convert()
 `LLMSuggestionEngine` uses Anthropic or OpenAI to suggest migration strategies:
 
 ```python
-from core.llm_engine import LLMSuggestionEngine
+from migrator_gen.core.llm_engine import LLMSuggestionEngine
 
-engine = LLMSuggestionEngine(provider="anthropic")
-suggestions = engine.suggest_migration(code, target_library="pydantic")
+engine = LLMSuggestionEngine()
+suggestions = engine.suggest_from_error(
+    error_message="TypeError: got an unexpected keyword argument 'timeout'",
+    code_context="connect(host='localhost', timeout=30)",
+)
 ```
 
 Requires environment variables: `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`.
@@ -595,7 +575,8 @@ Requires environment variables: `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`.
 `ParallelMigrationEngine` distributes file migration across CPU cores:
 
 ```python
-from core.parallel_engine import ParallelMigrationEngine
+from pathlib import Path
+from migrator_gen.core.parallel_engine import ParallelMigrationEngine
 
 engine = ParallelMigrationEngine(max_workers=4)
 report = engine.migrate_directory(Path('./myproject/'), rules)
@@ -612,7 +593,7 @@ Features:
 
 ## Migration Packs
 
-Pre-built rule sets for popular libraries are in `migration_packs/`:
+Pre-built rule sets for popular libraries are in `migration-packs/`:
 
 | Pack | Description |
 |---|---|
@@ -622,8 +603,8 @@ Pre-built rule sets for popular libraries are in `migration_packs/`:
 
 ```bash
 # Use a migration pack
-python cli/cli.py create \
-  --changelog migration_packs/pydantic.json \
+migrator-gen create \
+  --changelog migration-packs/pydantic.json \
   --library pydantic \
   --output ./pydantic_migrator
 ```
@@ -681,13 +662,18 @@ python cli/cli.py create \
 
 ```bash
 # Run full test suite
+make test
+# or:
 python -m pytest tests/ -v
 
 # Run specific test class
-python -m pytest tests/test_platform.py::TestChangelogParserBasics -v
+python -m pytest tests/unit/core/test_platform.py::TestChangelogParserBasics -v
 
 # Run shared library tests
-python -m pytest tests/test_shared.py -v
+python -m pytest tests/unit/packages/test_shared.py -v
+
+# Run SDK tests
+python -m pytest sdk/python/tests/ -v
 ```
 
 **186 test cases** total (131 core + 55 shared libs):
@@ -728,11 +714,6 @@ pre-commit install
 
 # Run all hooks manually
 pre-commit run --all-files
-
-# Run specific hooks
-pre-commit run ruff --all-files
-pre-commit run mypy --all-files
-pre-commit run bandit -r core/
 ```
 
 Tools configured:
@@ -740,13 +721,13 @@ Tools configured:
 - **mypy** — type checking (`--ignore-missing-imports`)
 - **bandit** — security scanning
 - **pyright** — static type analysis
-- **pre-commit-hooks** — trailing whitespace, YAMl, large files, merge conflicts
+- **pre-commit-hooks** — trailing whitespace, YAML, large files, merge conflicts
 
-Run linting directly (if tools installed system-wide):
+Run linting directly (if tools installed in venv):
 ```bash
-ruff check . --fix
+ruff check cli/ mcp/ sdk/python/ backend/ shared/ tests/ --fix
 ruff format .
-mypy core/ api/ mcp/ tests/ --ignore-missing-imports
+mypy cli/ mcp/ sdk/python/ backend/ tests/ --ignore-missing-imports
 ```
 
 ---
@@ -755,20 +736,20 @@ mypy core/ api/ mcp/ tests/ --ignore-missing-imports
 
 ### 1. Demo all features
 ```bash
-python demo_all_features.py
+python examples/demo_all_features.py
 ```
 Prints output for all 17 major features.
 
 ### 2. Create and use a migrator
 ```bash
 # Create
-python cli/cli.py create \
+migrator-gen create \
   --changelog examples/mylib_changelog.json \
   --library mylib \
-  --output ./generated_migrator
+  --output ./generated
 
 # Install
-cd generated_migrator && uv pip install -e . && cd ..
+cd generated && uv pip install -e . && cd ..
 
 # List versions
 mylib_migrator list-versions
@@ -787,18 +768,17 @@ mylib_migrator migrate \
 ### 3. Start REST API and migrate via HTTP
 ```bash
 # Terminal 1: Start API
-python api/server.py
+make run-api
 
 # Terminal 2: Make requests
 curl http://localhost:8000/health
-curl -X POST http://localhost:8000/versions \
-  -d '{"rules_file": "examples/mylib_changelog.json"}'
+curl -X POST http://localhost:8000/api/v1/libraries
 ```
 
 ### 4. Auto-generate rules from a changelog
 ```bash
-python cli/cli.py run \
-  --rules migration_packs/pydantic.json \
+migrator-gen migrate \
+  --rules migration-packs/pydantic.json \
   --from 1.0.0 \
   --to 2.0.0 \
   ./my_project/
@@ -806,12 +786,13 @@ python cli/cli.py run \
 
 ### 5. Parallel migration
 ```python
-from core.parallel_engine import ParallelMigrationEngine
-from core.changelog_parser import ChangelogParser
-from core.version_resolver import VersionResolver
+from pathlib import Path
+from migrator_gen.core.parallel_engine import ParallelMigrationEngine
+from migrator_gen.core.changelog_parser import ChangelogParser
+from migrator_gen.core.version_resolver import VersionResolver
 
 parser = ChangelogParser()
-changelogs = parser.parse(open("migration_packs/pydantic.json").read())
+changelogs = parser.parse(open("migration-packs/pydantic.json").read())
 resolver = VersionResolver(changelogs)
 path = resolver.resolve_path("1.0.0", "2.0.0")
 
@@ -825,13 +806,13 @@ print(report.summary())
 ## Troubleshooting
 
 ### `ModuleNotFoundError: No module named 'core'`
-Run CLI from project root: `python cli/cli.py` not `python -m cli.cli`.
+The `core` package lives inside the SDK at `migrator_gen.core`. Install the SDK first: `make install-sdk`. Import via `from migrator_gen.core.xxx import ...` or use the SDK's top-level API (`from migrator_gen import ...`).
 
 ### `ModuleNotFoundError: No module named 'libcst'`
-Activate venv and reinstall: `source .venv/bin/activate && uv pip install -r requirements.txt`.
+Activate venv and reinstall: `source .venv/bin/activate && make install-sdk`.
 
 ### `mylib_migrator: command not found`
-Install the generated package: `cd generated_migrator && uv pip install -e .`.
+Install the generated package: `cd generated && uv pip install -e .`.
 
 ### Migration produces no changes
 Check versions exist: `mylib_migrator list-versions`. Confirm source code uses old API names. Use `--preview` to inspect diffs.
@@ -840,4 +821,4 @@ Check versions exist: `mylib_migrator list-versions`. Confirm source code uses o
 Check port is free: `lsof -i :8000`. If busy, kill the process or use `--port 8001`.
 
 ### MCP server won't start
-Ensure `requirements.txt` is fully installed. Check `mcp/server.py` has no import errors: `python -c "import mcp.server"`.
+Ensure dependencies are installed: `make install-dev`. Check for import errors: `python -c "import migrator_gen_mcp"`.
