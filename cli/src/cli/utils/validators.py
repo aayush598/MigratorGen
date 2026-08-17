@@ -16,3 +16,15 @@ _VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
 
 def is_valid_version(version: str) -> bool:
     return bool(_VERSION_RE.match(version))
+
+
+def pluralize(count: int, singular: str, plural: str | None = None) -> str:
+    if plural is None:
+        plural = singular + "s"
+    return f"{count} {singular if count == 1 else plural}"
+
+
+def truncate(text: str, max_len: int = 80) -> str:
+    if len(text) <= max_len:
+        return text
+    return text[: max_len - 3] + "..."

@@ -82,8 +82,8 @@ def cmd_diff_rules(ctx: CLIContext, out: OutputFormatter) -> None:
         if not p.exists():
             out.err(f"{label} rules file not found: {p}")
 
-    old_rules = _rules_by_id(old_path)
-    new_rules = _rules_by_id(new_path)
+    old_rules = _rules_by_id(ctx, old_path)
+    new_rules = _rules_by_id(ctx, new_path)
 
     added = set(new_rules) - set(old_rules)
     removed = set(old_rules) - set(new_rules)
@@ -131,10 +131,6 @@ def cmd_diff_rules(ctx: CLIContext, out: OutputFormatter) -> None:
         out.info("No differences found.")
 
 
-def _rules_by_id(path: Path) -> dict[str, "Rule"]:
-    from migrator_gen import Rule
-    from migrator_gen import SyncMigrationClient as _Client
-
-    client = _Client(mode="local")
-    mf = client.parse_changelog(str(path))
+def _rules_by_id(ctx: CLIContext, path: Path) -> dict[str, "Rule"]:
+    mf = ctx.client.parse_changelog(str(path))
     return {r.id: r for v in mf.versions for r in v.rules}

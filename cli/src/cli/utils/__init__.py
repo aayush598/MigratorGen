@@ -1,5 +1,5 @@
-"""CLI utilities."""
-from .formatting import pluralize, truncate, bold, dim
-from .validators import STDLIB_MODULES, is_valid_version
+"""Utility helpers."""
 
-__all__ = ["pluralize", "truncate", "bold", "dim", "STDLIB_MODULES", "is_valid_version"]
+from .validators import pluralize, truncate, is_valid_version, STDLIB_MODULES
+
+__all__ = ["pluralize", "truncate", "is_valid_version", "STDLIB_MODULES"]

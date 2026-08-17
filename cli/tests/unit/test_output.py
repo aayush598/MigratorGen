@@ -36,13 +36,13 @@ class TestOutputFormatter:
         assert "hello" in captured.out
 
     def test_pluralize(self):
-        from cli.utils.formatting import pluralize
+        from cli.utils.validators import pluralize
         assert pluralize(1, "rule") == "1 rule"
         assert pluralize(3, "rule") == "3 rules"
         assert pluralize(2, "version") == "2 versions"
 
     def test_truncate(self):
-        from cli.utils.formatting import truncate
+        from cli.utils.validators import truncate
         assert truncate("short") == "short"
         assert len(truncate("x" * 100, max_len=10)) == 10
 

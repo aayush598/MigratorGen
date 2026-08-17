@@ -18,3 +18,4 @@ htmlcov/
 bandit-report.json
 safety_report.json
 pip_audit_report.json
+user-packs/

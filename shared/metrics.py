@@ -19,9 +19,6 @@ except ImportError:
     def generate_latest(*args, **kwargs):  # type: ignore
         return b""
 
-PROMETHEUS_AVAILABLE = False  # Always disable for core imports
-
-
 def _make_counter(name: str, documentation: str, labelnames: list[str]) -> Any:
     if PROMETHEUS_AVAILABLE and Counter:
         return Counter(name, documentation, labelnames)

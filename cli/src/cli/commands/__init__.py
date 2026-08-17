@@ -2,7 +2,7 @@
 
 from typing import Any, Callable
 
-from .audit import cmd_audit
+from .audit import cmd_audit, cmd_auto_upgrade
 from .config import cmd_create, cmd_export_schema, cmd_update, cmd_interactive
 from .migrate import cmd_migrate
 from .preview import cmd_preview
@@ -20,7 +20,7 @@ COMMANDS: dict[str, Callable[..., Any]] = {
     "validate-rules": cmd_validate_rules,
     "diff-rules": cmd_diff_rules,
     "audit": cmd_audit,
-    "auto-upgrade": cmd_create,
+    "auto-upgrade": cmd_auto_upgrade,
 }
 
 __all__ = ["COMMANDS"]

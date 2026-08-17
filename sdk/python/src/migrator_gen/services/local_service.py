@@ -185,7 +185,64 @@ class LocalMigrationService:
         })()
 
     def list_libraries(self) -> dict[str, dict[str, Any]]:
-        return {}
+        packs_dir = self._config.migration_packs_dir
+        if not packs_dir.exists():
+            return {}
+        
+        result: dict[str, dict[str, Any]] = {}
+        for pack_file in packs_dir.glob("*.json"):
+            try:
+                import json
+                data = json.loads(pack_file.read_text(encoding="utf-8"))
+                lib_name = data.get("library", pack_file.stem)
+                versions = data.get("versions", [])
+                version_details = []
+                for v in versions:
+                    version_details.append({
+                        "version": v.get("version", ""),
+                        "rules": v.get("rules", []),
+                    })
+                all_rules = []
+                for v in versions:
+                    all_rules.extend(v.get("rules", []))
+                result[lib_name] = {
+                    "name": lib_name,
+                    "description": data.get("description", ""),
+                    "versions": version_details,
+                    "rule_count": len(all_rules),
+                    "source": "builtin",
+                }
+            except Exception:
+                continue
+        
+        # Also read user-packs directory
+        user_packs_dir = packs_dir.parent / "user-packs"
+        if user_packs_dir.exists():
+            for pack_file in user_packs_dir.glob("*.json"):
+                try:
+                    data = json.loads(pack_file.read_text(encoding="utf-8"))
+                    lib_name = data.get("library", pack_file.stem)
+                    versions = data.get("versions", [])
+                    version_details = []
+                    for v in versions:
+                        version_details.append({
+                            "version": v.get("version", ""),
+                            "rules": v.get("rules", []),
+                        })
+                    all_rules = []
+                    for v in versions:
+                        all_rules.extend(v.get("rules", []))
+                    result[lib_name] = {
+                        "name": lib_name,
+                        "description": data.get("description", ""),
+                        "versions": version_details,
+                        "rule_count": len(all_rules),
+                        "source": "user",
+                    }
+                except Exception:
+                    continue
+        
+        return result
 
     def generate_rules_from_diff(self, old_code: str, new_code: str, module: str = "") -> list[m.Rule]:
         try:

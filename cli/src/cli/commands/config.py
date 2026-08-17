@@ -64,6 +64,11 @@ def cmd_update(ctx: CLIContext, out: OutputFormatter) -> None:
     library = args.library or old_mf.library or "unknown"
     output_dir = Path(args.output) if args.output else old_rules_path.parent
 
+    merged_mf = MigrationFile(library=library, versions=all_versions)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    merged_path = output_dir / "migration_rules.json"
+    merged_path.write_text(merged_mf.model_dump_json(indent=2, exclude_none=True), encoding="utf-8")
+
     out_path = client.generate_migrator_package(library, str(output_dir))
 
     if ctx.json_mode:

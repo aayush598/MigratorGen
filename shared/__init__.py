@@ -20,8 +20,19 @@ from .exceptions import (
 )
 from .metrics import setup_metrics, track_migration_start, track_migration_end, MetricsCollector
 from .cache import CacheManager
-from .database import get_session, init_db, MigrationJob, MigrationSession
+from .database import get_session, init_db, MigrationJob, MigrationSession, Tenant, User, APIKey, AuditLog, BillingSubscription
 from .utils import generate_request_id, utc_now, safe_filename, format_bytes, format_duration, retry_with_backoff
+from .auth import (
+    Role,
+    hash_password,
+    verify_password,
+    create_access_token,
+    create_refresh_token,
+    decode_token,
+    generate_api_key,
+    verify_api_key,
+    has_permission,
+)
 
 __version__ = "0.1.0"
 __all__ = [
@@ -52,10 +63,24 @@ __all__ = [
     "init_db",
     "MigrationJob",
     "MigrationSession",
+    "Tenant",
+    "User",
+    "APIKey",
+    "AuditLog",
+    "BillingSubscription",
     "generate_request_id",
     "utc_now",
     "safe_filename",
     "format_bytes",
     "format_duration",
     "retry_with_backoff",
+    "Role",
+    "hash_password",
+    "verify_password",
+    "create_access_token",
+    "create_refresh_token",
+    "decode_token",
+    "generate_api_key",
+    "verify_api_key",
+    "has_permission",
 ]

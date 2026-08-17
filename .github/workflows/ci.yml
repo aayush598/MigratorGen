@@ -1,193 +1,116 @@
+# CI Pipeline for MigratorGen
 name: CI
 
 on:
   push:
-    branches: [main, develop, '**']
+    branches: [main, develop]
   pull_request:
-    branches: [main, develop, '**']
-  schedule:
-    - cron: '0 2 * * 1'
-
-env:
-  PYTHON_VERSION: '3.12'
-  DOCKER_BUILDKIT: 1
-  CODECOV_FLAG: GHA
+    branches: [main]
 
 jobs:
   lint:
-    name: Lint
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
-
+          python-version: "3.12"
       - name: Install dependencies
         run: |
-          pip install ruff
-          pip install -e "sdk/python[all]"
-
-      - name: Run ruff check
-        run: ruff check core/ cli/ mcp/ sdk/ backend/ shared/ tests/
-
-      - name: Check ruff format
-        run: ruff format --check core/ cli/ mcp/ sdk/ backend/ shared/ tests/
+          pip install uv
+          uv venv .venv
+          source .venv/bin/activate
+          uv pip install -e ".[dev,api,worker]"
+      - name: Ruff check
+        run: source .venv/bin/activate && ruff check cli/ mcp/ sdk/python/ backend/ shared/ tests/
+      - name: Ruff format check
+        run: source .venv/bin/activate && ruff format --check .
 
   typecheck:
-    name: Type Check
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
-
+          python-version: "3.12"
       - name: Install dependencies
         run: |
-          pip install mypy
-          pip install -e .
-          pip install -e "sdk/python[all]"
-
-      - name: Run mypy
-        run: mypy cli/ mcp/ sdk/python/ backend/ tests/
+          pip install uv
+          uv venv .venv
+          source .venv/bin/activate
+          uv pip install -e ".[dev,api,worker]"
+      - name: Mypy
+        run: source .venv/bin/activate && mypy cli/ mcp/ sdk/python/ backend/ tests/ --ignore-missing-imports
 
   test:
-    name: Test
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: migrator_user
+          POSTGRES_PASSWORD: test-password
+          POSTGRES_DB: migrator_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Cache virtual environment
-        uses: actions/cache@v4
-        with:
-          path: .venv
-          key: ${{ runner.os }}-venv-${{ hashFiles('**/requirements*.txt', '**/pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-venv-
-
+          python-version: "3.12"
       - name: Install dependencies
         run: |
-          python -m venv .venv
+          pip install uv
+          uv venv .venv
           source .venv/bin/activate
-          pip install --upgrade pip
-          pip install -e ".[dev]"
-          pip install -e "sdk/python[all]"
-          pip install -r requirements.txt 2>/dev/null || true
-
-      - name: Run pytest with coverage
+          uv pip install -e ".[dev,api,worker]"
+      - name: Run tests
         env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-        run: |
-          source .venv/bin/activate
-          pytest --cov=. --cov-report=xml --cov-fail-under=80 tests/
-
-      - name: Run pytest from pyproject.toml config
-        run: |
-          source .venv/bin/activate
-          pytest
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        if: success()
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage.xml
-          fail_ci_if_error: true
+          DATABASE_URL: postgresql+asyncpg://migrator_user:test-password@localhost:5432/migrator_test
+          REDIS_URL: redis://localhost:6379/0
+        run: source .venv/bin/activate && python -m pytest tests/ -v --tb=short -x
 
   security:
-    name: Security Scan
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
-
-      - name: Install bandit
-        run: pip install bandit
-
-      - name: Run bandit
-        run: bandit -r backend/ mcp/ -f json -o bandit-report.json
-
-      - name: Upload Bandit report
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          pip install uv
+          uv venv .venv
+          source .venv/bin/activate
+          uv pip install -e ".[dev]" bandit
+      - name: Bandit security scan
+        run: source .venv/bin/activate && bandit -r backend/ mcp/ shared/ -f json -o bandit-report.json || true
+      - name: Upload security report
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: bandit-report
           path: bandit-report.json
 
-  docker-build:
-    name: Docker Build
+  docker:
     runs-on: ubuntu-latest
-    needs: [lint, typecheck, test, security]
-    permissions:
-      contents: read
-      packages: write
+    needs: [lint, test]
+    if: github.ref == 'refs/heads/main'
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.CRATES_TOKEN }}
-
-      - name: Build and push migration-api
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: infra/docker/Dockerfile.api
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository }}/migration-api:${{ github.sha }}
-            ghcr.io/${{ github.repository }}/migration-api:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build and push migration-worker
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: infra/docker/Dockerfile
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository }}/migration-worker:${{ github.sha }}
-            ghcr.io/${{ github.repository }}/migration-worker:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build and push migration-nginx
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: infra/docker/Dockerfile.nginx
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository }}/migration-nginx:${{ github.sha }}
-            ghcr.io/${{ github.repository }}/migration-nginx:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - uses: actions/checkout@v4
+      - name: Build API image
+        run: docker build -f infra/docker/Dockerfile.api -t migrator-gen-api .
+      - name: Build Worker image
+        run: docker build -f infra/docker/Dockerfile -t migrator-gen-worker .

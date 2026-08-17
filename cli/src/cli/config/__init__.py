@@ -1,1 +1,1 @@
-"""CLI configuration management."""
+"""CLI configuration."""

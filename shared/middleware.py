@@ -59,21 +59,16 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware if STARLETTE_AVAILABLE else ob
         except Exception:
             duration_ms = (time.perf_counter() - start) * 1000
             logger.error(
-                "request_failed",
-                method=method,
-                path=path,
-                duration_ms=f"{duration_ms:.2f}",
+                "request_failed %s %s %.2fms",
+                method, path, duration_ms,
             )
             raise
 
         duration_ms = (time.perf_counter() - start) * 1000
         status = response.status_code
         logger.info(
-            "request_completed",
-            method=method,
-            path=path,
-            status=status,
-            duration_ms=f"{duration_ms:.2f}",
+            "request_completed %s %s %d %.2fms",
+            method, path, status, duration_ms,
         )
         return response
 
@@ -115,21 +110,61 @@ class MetricsMiddleware(BaseHTTPMiddleware if STARLETTE_AVAILABLE else object):
         return response
 
 
-class TenantMiddleware(BaseHTTPMiddleware if STARLETTE_AVAILABLE else object):
-    """Extracts and validates tenant_id from JWT or header for multi-tenancy."""
+class AuthenticationMiddleware(BaseHTTPMiddleware if STARLETTE_AVAILABLE else object):
+    """Validates auth via service key (internal) or API key (CLI/MCP)."""
 
-    def __init__(self, app: ASGIApp, jwt_secret: Optional[str] = None):
+    EXEMPT_PATHS = {"/health", "/docs", "/redoc", "/openapi.json", "/metrics"}
+
+    def __init__(self, app: ASGIApp, service_key: Optional[str] = None, jwt_secret: Optional[str] = None):
         super().__init__(app)
+        self.service_key = service_key
         self.jwt_secret = jwt_secret
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        tenant_id = request.headers.get("X-Tenant-ID")
-        user_id = request.headers.get("X-User-ID")
+        path = request.url.path
 
-        if tenant_id:
-            request.state.tenant_id = tenant_id
-        if user_id:
-            request.state.user_id = user_id
+        if path in self.EXEMPT_PATHS or path.startswith("/api/v1/auth"):
+            request.state.tenant_id = None
+            request.state.user_id = None
+            request.state.role = None
+            return await call_next(request)
+
+        service_key = request.headers.get("X-Service-Key", "")
+
+        if self.service_key and service_key == self.service_key:
+            request.state.tenant_id = request.headers.get("X-Tenant-ID")
+            request.state.user_id = request.headers.get("X-User-ID")
+            request.state.role = request.headers.get("X-User-Role", "member")
+            return await call_next(request)
+
+        auth_header = request.headers.get("Authorization", "")
+
+        if self.jwt_secret and auth_header.startswith("Bearer "):
+            token = auth_header[7:]
+            from .auth import decode_token
+            payload = decode_token(token, self.jwt_secret)
+            if payload is None:
+                return JSONResponse(
+                    status_code=401,
+                    content={
+                        "type": "https://migrator-gen.example.com/errors/UNAUTHORIZED",
+                        "title": "Invalid or expired token",
+                        "status": 401,
+                    },
+                )
+            request.state.tenant_id = payload.get("tenant_id")
+            request.state.user_id = payload.get("sub")
+            request.state.role = payload.get("role")
+        else:
+            api_key = request.headers.get("X-API-Key")
+            if api_key:
+                request.state.tenant_id = request.headers.get("X-Tenant-ID")
+                request.state.user_id = None
+                request.state.role = "member"
+            else:
+                request.state.tenant_id = None
+                request.state.user_id = None
+                request.state.role = None
 
         return await call_next(request)
 
@@ -151,9 +186,8 @@ class TimeoutMiddleware(BaseHTTPMiddleware if STARLETTE_AVAILABLE else object):
             )
         except asyncio.TimeoutError:
             logger.error(
-                "request_timeout",
-                path=request.url.path,
-                timeout=self.timeout_seconds,
+                "request_timeout %s (limit %.1fs)",
+                request.url.path, self.timeout_seconds,
             )
             return JSONResponse(
                 status_code=504,
@@ -172,6 +206,7 @@ def setup_middlewares(
     rate_limit: str = "100/minute",
     timeout_seconds: float = 60.0,
     jwt_secret: Optional[str] = None,
+    service_key: Optional[str] = None,
 ) -> None:
     """
     Attach all middlewares to a FastAPI application.
@@ -181,7 +216,8 @@ def setup_middlewares(
         cors_origins: List of allowed CORS origins
         rate_limit: Rate limit string (e.g., "100/minute")
         timeout_seconds: Per-request timeout
-        jwt_secret: JWT secret for tenant validation
+        jwt_secret: JWT secret for tenant validation (legacy/CLI)
+        service_key: Shared secret for internal service-to-service auth
     """
     if cors_origins is None:
         cors_origins = ["*"]
@@ -195,8 +231,12 @@ def setup_middlewares(
         app.add_middleware(RequestIDMiddleware)
         app.add_middleware(RequestLoggingMiddleware)
 
-        if jwt_secret:
-            app.add_middleware(TenantMiddleware, jwt_secret=jwt_secret)
+        if jwt_secret or service_key:
+            app.add_middleware(
+                AuthenticationMiddleware,
+                service_key=service_key,
+                jwt_secret=jwt_secret,
+            )
 
         app.add_middleware(
             CORSMiddleware,

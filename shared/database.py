@@ -1,14 +1,14 @@
 """
 Async SQLAlchemy database setup for MigratorGen platform.
-Provides async session management, connection pooling, and core models.
+Provides async session management, connection pooling, and SaaS models.
 """
 
 from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime
-from typing import Any, AsyncGenerator, Dict, Optional
+from datetime import datetime, timezone
+from typing import Any, AsyncGenerator, Dict, List, Optional
 from uuid import UUID, uuid4
 
 try:
@@ -19,18 +19,20 @@ try:
         Integer,
         Text,
         Boolean,
+        Float,
         Enum as SQLEnum,
         Index,
+        ForeignKey,
         text,
     )
-    from sqlalchemy.dialects.postgresql import UUID as PG_UUID, JSON
+    from sqlalchemy.dialects.postgresql import UUID as PG_UUID, JSON, ARRAY
     from sqlalchemy.ext.asyncio import (
         AsyncEngine,
         AsyncSession,
         async_sessionmaker,
         create_async_engine,
     )
-    from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+    from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
     from sqlalchemy.pool import AsyncAdaptedQueuePool
     SQLALCHEMY_AVAILABLE = True
 except ImportError:
@@ -43,6 +45,106 @@ logger = logging.getLogger(__name__)
 class Base(DeclarativeBase):
     """SQLAlchemy declarative base."""
     pass
+
+
+# ── SaaS Models ─────────────────────────────────────────────────
+
+
+class Tenant(Base):
+    """
+    Multi-tenant organization.
+
+    Attributes:
+        id: UUID primary key
+        name: Display name
+        slug: URL-safe identifier
+        plan: Subscription tier (free, pro, enterprise)
+        settings: JSONB for flexible tenant configuration
+        is_active: Whether tenant is active
+        created_at: Creation timestamp
+        updated_at: Last update timestamp
+    """
+
+    __tablename__ = "tenants"
+
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    slug: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
+    plan: Mapped[str] = mapped_column(String(32), nullable=False, default="free")
+    settings: Mapped[Optional[Dict]] = mapped_column(JSON, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    users: Mapped[List["User"]] = relationship("User", back_populates="tenant")
+    api_keys: Mapped[List["APIKey"]] = relationship("APIKey", back_populates="tenant")
+
+
+class User(Base):
+    """
+    Platform user belonging to a tenant.
+
+    Attributes:
+        id: UUID primary key
+        tenant_id: Foreign key to tenants
+        email: Unique email address
+        password_hash: bcrypt hashed password
+        name: Display name
+        role: RBAC role (owner, admin, member, viewer)
+        is_active: Whether user is active
+        last_login: Last login timestamp
+        created_at: Creation timestamp
+    """
+
+    __tablename__ = "users"
+
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    tenant_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    role: Mapped[str] = mapped_column(String(32), nullable=False, default="member")
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    last_login: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+
+    tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="users")
+
+
+class APIKey(Base):
+    """
+    API key for programmatic access.
+
+    Attributes:
+        id: UUID primary key
+        tenant_id: Foreign key to tenants
+        user_id: Foreign key to users who created the key
+        name: Human-readable name
+        key_hash: SHA-256 hash of the raw key
+        key_prefix: First 12 chars for display
+        scopes: Allowed operations (migrate, read, write, admin)
+        is_active: Whether key is active
+        last_used_at: Last usage timestamp
+        created_at: Creation timestamp
+    """
+
+    __tablename__ = "api_keys"
+
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    tenant_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    user_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    key_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
+    key_prefix: Mapped[str] = mapped_column(String(16), nullable=False)
+    scopes: Mapped[List[str]] = mapped_column(ARRAY(String), nullable=False, default=["migrate", "read"])
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    last_used_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+
+    tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="api_keys")
+
+
+# ── Migration Models ────────────────────────────────────────────
 
 
 class MigrationJob(Base):
@@ -83,10 +185,10 @@ class MigrationJob(Base):
     bytes_processed: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     duration_ms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    confidence_score: Mapped[Optional[float]] = mapped_column(nullable=True)
+    confidence_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     ip_address: Mapped[Optional[str]] = mapped_column(String(45), nullable=True)
     user_agent: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     __table_args__ = (
@@ -116,10 +218,80 @@ class MigrationSession(Base):
     tenant_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
     user_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
     ip_address: Mapped[Optional[str]] = mapped_column(String(45), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
-    last_activity: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    last_activity: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     migration_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     total_bytes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
+class AuditLog(Base):
+    """
+    Immutable audit trail for all mutations.
+
+    Attributes:
+        id: UUID primary key
+        tenant_id: Multi-tenant identifier
+        user_id: User who performed the action
+        action: Action performed (create, update, delete, migrate)
+        resource_type: Type of resource affected
+        resource_id: ID of the resource affected
+        details: JSONB with additional context
+        ip_address: Client IP
+        user_agent: Client user agent
+        created_at: Action timestamp
+    """
+
+    __tablename__ = "audit_logs"
+
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    tenant_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    user_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    action: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    resource_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    resource_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    details: Mapped[Optional[Dict]] = mapped_column(JSON, nullable=True)
+    ip_address: Mapped[Optional[str]] = mapped_column(String(45), nullable=True)
+    user_agent: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        Index("ix_audit_logs_tenant_action", "tenant_id", "action"),
+        Index("ix_audit_logs_created", "created_at"),
+    )
+
+
+class BillingSubscription(Base):
+    """
+    Stripe subscription tracking.
+
+    Attributes:
+        id: UUID primary key
+        tenant_id: Foreign key to tenants
+        plan: Subscription plan (free, pro, enterprise)
+        status: Subscription status (active, canceled, past_due)
+        stripe_customer_id: Stripe customer ID
+        stripe_subscription_id: Stripe subscription ID
+        current_period_start: Current billing period start
+        current_period_end: Current billing period end
+        migration_count_this_period: Migrations used this period
+        migration_limit: Max migrations per period
+    """
+
+    __tablename__ = "billing_subscriptions"
+
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    tenant_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, unique=True, index=True)
+    plan: Mapped[str] = mapped_column(String(32), nullable=False, default="free")
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="active")
+    stripe_customer_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    stripe_subscription_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    current_period_start: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    current_period_end: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    migration_count_this_period: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    migration_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
+
+
+# ── Engine & Session ────────────────────────────────────────────
 
 
 _engine: Optional[AsyncEngine] = None

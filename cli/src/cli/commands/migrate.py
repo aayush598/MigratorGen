@@ -23,6 +23,10 @@ def cmd_migrate(ctx: CLIContext, out: OutputFormatter) -> None:
 
     out.info(f"Loading rules from {rules_path} ...")
     versions = client.parse_changelog(str(rules_path)).versions
+    from_version = getattr(args, "from_version", None)
+    to_version = getattr(args, "to_version", None)
+    if from_version and from_version != "latest":
+        versions = [v for v in versions if v.version >= from_version]
     rules = [r for v in versions for r in v.rules]
     out.info(f"Loaded {len(rules)} rule(s) across {len(versions)} version(s)")
 

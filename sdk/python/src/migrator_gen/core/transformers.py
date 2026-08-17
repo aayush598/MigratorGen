@@ -39,6 +39,15 @@ class RenameFunctionTransformer(BaseTransformer):
             return updated_node.with_changes(value=self.rule.new_name)
         return updated_node
 
+    def leave_Attribute(
+        self, original_node: cst.Attribute, updated_node: cst.Attribute
+    ) -> cst.Attribute | cst.Name:
+        full_name = _get_dotted_name(updated_node)
+        if full_name == self.rule.old_name:
+            self._record(f"Renamed function: {self.rule.old_name} -> {self.rule.new_name}")
+            return _make_dotted_name(self.rule.new_name)
+        return updated_node
+
 
 # ---------------------------------------------------------------------------
 # 2. Rename Class
@@ -53,6 +62,15 @@ class RenameClassTransformer(BaseTransformer):
         if updated_node.value == self.rule.old_name:
             self._record(f"Renamed class: {self.rule.old_name} -> {self.rule.new_name}")
             return updated_node.with_changes(value=self.rule.new_name)
+        return updated_node
+
+    def leave_Attribute(
+        self, original_node: cst.Attribute, updated_node: cst.Attribute
+    ) -> cst.Attribute | cst.Name:
+        full_name = _get_dotted_name(updated_node)
+        if full_name == self.rule.old_name:
+            self._record(f"Renamed class: {self.rule.old_name} -> {self.rule.new_name}")
+            return _make_dotted_name(self.rule.new_name)
         return updated_node
 
 
@@ -135,7 +153,28 @@ class RenameImportTransformer(BaseTransformer):
     def leave_Import(
         self, original_node: cst.Import, updated_node: cst.Import
     ) -> cst.Import:
-        return updated_node
+        old_module = self.rule.old_module or ""
+        new_module = self.rule.new_module or ""
+        if not old_module or not new_module:
+            return updated_node
+
+        new_aliases = []
+        changed = False
+        for alias in updated_node.names:
+            module_str = _get_dotted_name(alias.name)
+            if module_str == old_module:
+                new_aliases.append(alias.with_changes(name=_make_dotted_name(new_module)))
+                changed = True
+                self._record(
+                    f"Renamed import: import {old_module} -> import {new_module}"
+                )
+            else:
+                new_aliases.append(alias)
+
+        if not changed:
+            return updated_node
+
+        return updated_node.with_changes(names=new_aliases)
 
 
 # ---------------------------------------------------------------------------

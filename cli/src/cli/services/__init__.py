@@ -1,1 +1,1 @@
-"""Service layer — wraps SDK interactions."""
+"""CLI services — thin wrappers around SDK."""
