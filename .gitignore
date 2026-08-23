@@ -1,21 +1,69 @@
-.venv
-__pycache__
-*/__pycache__
-.pytest_cache
+# ── OS ──────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# ── IDE ─────────────────────────────────────────────
+.vscode/
+.idea/
+*.code-workspace
+
+# ── Environment ─────────────────────────────────────
 .env
-generated/
-generated_migrator/
-generated_migrator_md/
-*.bak
-*/*.egg-info
+.env.*
+!.env.example
+!.env.test
+
+# ── Python ──────────────────────────────────────────
+.venv/
+__pycache__/
 *.pyc
 *.pyo
+*.egg-info/
 dist/
 build/
 .coverage
 htmlcov/
-*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.bak
 bandit-report.json
 safety_report.json
 pip_audit_report.json
-user-packs/
+
+# ── Node / Next.js ─────────────────────────────────
+node_modules/
+.next/
+out/
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+*.tsbuildinfo
+next-env.d.ts
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ── Project-specific ────────────────────────────────
+# Generated output
+generated/
+generated_migrator/
+generated_migrator_md/
+
+# Auth DB (local dev)
+webapp/auth.db
+webapp/data/user-packs/*.json
+
+# Vercel
+.vercel/
+
+# Coverage
+webapp/coverage/

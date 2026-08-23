@@ -1,0 +1,74 @@
+{
+  "library": "requests-to-httpx",
+  "name": "requests to httpx",
+  "description": "Migrate from requests library to httpx",
+  "schema_version": "1.0",
+  "is_published": true,
+  "created_at": "2026-08-17T13:28:23.439885+00:00",
+  "updated_at": "2026-08-17T13:28:24.030210+00:00",
+  "versions": [
+    {
+      "version": "0.1.0",
+      "release_date": "2026-08-17",
+      "rules": [
+        {
+          "id": "requests-to-httpx-0-9n2l",
+          "change_type": "rename_import",
+          "description": "import requests -> import httpx",
+          "version_introduced": "0.1.0",
+          "old_name": null,
+          "new_name": null,
+          "function_name": null,
+          "argument_name": null,
+          "old_module": "requests",
+          "new_module": "httpx",
+          "replacement": null,
+          "safety": "safe",
+          "confidence_hint": "high",
+          "tags": [
+            "requests",
+            "httpx"
+          ]
+        },
+        {
+          "id": "requests-to-httpx-0-t6fk",
+          "change_type": "rename_function",
+          "description": "requests.get/post/etc -> httpx.get/post/etc",
+          "version_introduced": "0.1.0",
+          "old_name": "requests.get",
+          "new_name": "httpx.get",
+          "function_name": null,
+          "argument_name": null,
+          "old_module": null,
+          "new_module": null,
+          "replacement": null,
+          "safety": "review_required",
+          "confidence_hint": "high",
+          "tags": [
+            "requests",
+            "httpx"
+          ]
+        },
+        {
+          "id": "requests-to-httpx-0-ioww",
+          "change_type": "rename_class",
+          "description": "requests.Session -> httpx.Client",
+          "version_introduced": "0.1.0",
+          "old_name": "requests.Session",
+          "new_name": "httpx.Client",
+          "function_name": null,
+          "argument_name": null,
+          "old_module": null,
+          "new_module": null,
+          "replacement": null,
+          "safety": "review_required",
+          "confidence_hint": "high",
+          "tags": [
+            "requests",
+            "httpx"
+          ]
+        }
+      ]
+    }
+  ]
+}

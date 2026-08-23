@@ -1,0 +1,37 @@
+{
+  "library": "cocotb-v1-v2",
+  "name": "cocotb v1 to v2",
+  "description": "Migrate cocotb code from v1.x to v2.x",
+  "schema_version": "1.0",
+  "is_published": true,
+  "created_at": "2026-08-17T14:12:00.542312+00:00",
+  "updated_at": "2026-08-17T14:12:01.021975+00:00",
+  "versions": [
+    {
+      "version": "1.0.0",
+      "release_date": "2026-08-17",
+      "rules": [
+        {
+          "id": "cocotb-v1-v2-164ahg",
+          "change_type": "rename_function",
+          "description": "cocotb.fork() was removed and replaced with cocotb.start_soon()",
+          "version_introduced": "1.0.0",
+          "old_name": "cocotb.fork",
+          "new_name": "cocotb.start_soon",
+          "old_module": null,
+          "new_module": null,
+          "function_name": null,
+          "argument_name": null,
+          "replacement": null,
+          "safety": "review_required",
+          "confidence_hint": "high",
+          "tags": [
+            "cocotb",
+            "async",
+            "v2"
+          ]
+        }
+      ]
+    }
+  ]
+}
