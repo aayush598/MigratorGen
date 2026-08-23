@@ -21,12 +21,12 @@ from pathlib import Path
 # ── Expand paths so we can import from workspace ─────────────
 _HERE = Path(__file__).resolve().parent
 _WORKSPACE = _HERE.parent
-sys.path.insert(0, str(_WORKSPACE / "sdk" / "python"))
+sys.path.insert(0, str(_WORKSPACE / "sdk" / "python" / "src"))
 sys.path.insert(0, str(_WORKSPACE / "cli"))
 sys.path.insert(0, str(_WORKSPACE / "mcp"))
 sys.path.insert(0, str(_WORKSPACE / "backend" / "api" / "src"))
 sys.path.insert(0, str(_WORKSPACE / "backend" / "worker" / "src"))
-sys.path.insert(0, str(_WORKSPACE / "sdk" / "python"))  # for core module
+sys.path.insert(0, str(_WORKSPACE / "sdk" / "python" / "src"))  # for core module
 
 FAILURES: list[str] = []
 
@@ -57,16 +57,16 @@ def test_package_structure() -> None:
     section("1. Package Structure")
 
     required = [
-        "sdk/python/migrator_gen/__init__.py",
-        "sdk/python/migrator_gen/client.py",
-        "sdk/python/migrator_gen/config.py",
-        "sdk/python/migrator_gen/exceptions.py",
-        "sdk/python/migrator_gen/models.py",
-        "sdk/python/migrator_gen/_local.py",
-        "sdk/python/migrator_gen/_remote.py",
+        "sdk/python/src/migrator_gen/__init__.py",
+        "sdk/python/src/migrator_gen/api/client_sync.py",
+        "sdk/python/src/migrator_gen/config/settings.py",
+        "sdk/python/src/migrator_gen/core/validation.py",
+        "sdk/python/src/migrator_gen/core/models.py",
+        "sdk/python/src/migrator_gen/services/local_service.py",
+        "sdk/python/src/migrator_gen/services/remote_service.py",
         "sdk/python/pyproject.toml",
-        "cli/main.py",
-        "mcp/server.py",
+        "cli/src/cli/cli/app.py",
+        "mcp/src/migrator_gen_mcp/server/app.py",
         "backend/api/src/server.py",
         "backend/worker/src/main.py",
         "backend/worker/src/tasks/migration_tasks.py",
