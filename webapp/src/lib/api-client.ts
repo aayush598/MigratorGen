@@ -219,6 +219,32 @@ export class MigratorGenClient {
       );
       return raw.rule_id ?? "";
     },
+    exportPack: async (id: string, incremental = false): Promise<void> => {
+      const url = new URL(`${this.baseUrl}/user-packs/${encodeURIComponent(id)}/export`, resolveBase(this.baseUrl));
+      if (incremental) url.searchParams.set("incremental", "true");
+      const res = await fetch(url.toString(), {
+        credentials: "include",
+        headers: { Accept: "application/zip" },
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        const parsed = safeParse(text);
+        const msg = (isObj(parsed) && typeof parsed.error === "string" && parsed.error) || `HTTP ${res.status}`;
+        throw mapStatusToError(res.status, msg, parsed);
+      }
+      const blob = await res.blob();
+      const disposition = res.headers.get("Content-Disposition") ?? "";
+      const filenameMatch = disposition.match(/filename="?(.+?)"?$/);
+      const filename = filenameMatch?.[1] ?? "migration-pack.zip";
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objectUrl);
+    },
   };
 
   readonly keys = {

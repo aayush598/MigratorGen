@@ -60,7 +60,7 @@ let enginePromise: Promise<PyodideInterface> | null = null;
 
 async function writeEngineFiles(pyodide: PyodideInterface): Promise<void> {
   const sitePackages = "/lib/python3.13/site-packages";
-  const engineDir = path.resolve(process.cwd(), "python", "engine");
+  const engineDir = path.resolve(process.cwd(), "..", "sdk", "python", "src", "migrator_gen", "core");
   const webApiPath = path.resolve(process.cwd(), "python", "web_api.py");
 
   const entries = await readdir(engineDir);

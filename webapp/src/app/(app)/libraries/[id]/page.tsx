@@ -7,6 +7,7 @@ import useSWR from "swr";
 import {
   ArrowLeft,
   ArrowRight,
+  Download,
   ShieldCheck,
   ShieldAlert,
   ShieldQuestion,
@@ -36,6 +37,7 @@ export default function LibraryDetailPage({ params }: { params: { id: string } }
   const [deleting, setDeleting] = useState(false);
   const [togglingPublish, setTogglingPublish] = useState(false);
   const [loadingForEdit, setLoadingForEdit] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const { data: library, isLoading, error, mutate } = useSWR(
     `library:${name}`,
@@ -110,6 +112,39 @@ export default function LibraryDetailPage({ params }: { params: { id: string } }
     }
   };
 
+  const handleExport = async (incremental = false) => {
+    setExporting(true);
+    try {
+      if (isCustom && packRecord) {
+        await client.current.packs.exportPack(packRecord.id, incremental);
+      } else {
+        const url = new URL(`/api/v1/libraries/${encodeURIComponent(name)}/export`, window.location.origin);
+        const res = await fetch(url.toString(), { credentials: "include" });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+          throw new Error(err.error || `HTTP ${res.status}`);
+        }
+        const blob = await res.blob();
+        const disposition = res.headers.get("Content-Disposition") ?? "";
+        const match = disposition.match(/filename="?(.+?)"?$/);
+        const filename = match?.[1] ?? `${name}-migration-pack.zip`;
+        const objectUrl = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = objectUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(objectUrl);
+      }
+      toast.success(incremental ? "Update pack downloaded" : "Full migration pack downloaded");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to export library");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="animate-fade-up">
       <div className="mb-6">
@@ -141,6 +176,12 @@ export default function LibraryDetailPage({ params }: { params: { id: string } }
                 <Button variant="secondary" size="sm" onClick={handleEdit} loading={loadingForEdit}>
                   <Pencil className="h-3.5 w-3.5" /> Edit
                 </Button>
+                <Button variant="secondary" size="sm" onClick={() => handleExport(false)} loading={exporting}>
+                  <Download className="h-3.5 w-3.5" /> Export
+                </Button>
+                <Button variant="secondary" size="sm" onClick={() => handleExport(true)} loading={exporting}>
+                  <Download className="h-3.5 w-3.5" /> Update Only
+                </Button>
                 <Button variant="secondary" size="sm" onClick={handleTogglePublish} loading={togglingPublish}>
                   {packRecord.is_published ? (
                     <><Undo2 className="h-3.5 w-3.5" /> Unpublish</>
@@ -157,6 +198,11 @@ export default function LibraryDetailPage({ params }: { params: { id: string } }
                   <Trash2 className="h-3.5 w-3.5" /> Delete
                 </Button>
               </>
+            )}
+            {!isCustom && (
+              <Button variant="secondary" size="sm" onClick={() => handleExport(false)} loading={exporting}>
+                <Download className="h-3.5 w-3.5" /> Export Built-in
+              </Button>
             )}
             <Link
               href={`/migrations/new?library=${encodeURIComponent(name)}`}
