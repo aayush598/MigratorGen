@@ -1,20 +1,12 @@
 import { NextResponse } from "next/server";
-import { readFile, writeFile, unlink } from "node:fs/promises";
-import path from "node:path";
-import { USER_PACKS_DIR } from "@/lib/packs";
+import { eq } from "drizzle-orm";
+import { getDb } from "@/lib/db";
+import { userPacks } from "@/lib/db-schema";
+import { getUserPackById } from "@/lib/packs";
 import { requireSession, errorResponse } from "@/lib/api-helpers";
 
 interface RouteContext {
   params: { id: string };
-}
-
-async function readPack(packId: string): Promise<Record<string, unknown> | null> {
-  try {
-    const content = await readFile(path.join(USER_PACKS_DIR, `${packId}.json`), "utf-8");
-    return JSON.parse(content) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
 }
 
 export async function GET(_request: Request, context: RouteContext) {
@@ -22,7 +14,7 @@ export async function GET(_request: Request, context: RouteContext) {
     const auth = await requireSession();
     if (!auth.ok) return auth.response;
 
-    const data = await readPack(context.params.id);
+    const data = await getUserPackById(context.params.id);
     if (!data) return NextResponse.json({ error: "Pack not found" }, { status: 404 });
 
     const versions = (data.versions as unknown[]) ?? [];
@@ -52,20 +44,22 @@ export async function PUT(request: Request, context: RouteContext) {
     if (!auth.ok) return auth.response;
 
     const packId = context.params.id;
-    const data = await readPack(packId);
-    if (!data) return NextResponse.json({ error: "Pack not found" }, { status: 404 });
+    const existing = await getUserPackById(packId);
+    if (!existing) return NextResponse.json({ error: "Pack not found" }, { status: 404 });
 
     const body = (await request.json()) as {
       name?: string;
       description?: string;
       versions?: unknown[];
     };
-    if (body.name !== undefined) data.name = body.name;
-    if (body.description !== undefined) data.description = body.description;
-    if (body.versions !== undefined) data.versions = body.versions;
-    data.updated_at = new Date().toISOString();
 
-    await writeFile(path.join(USER_PACKS_DIR, `${packId}.json`), JSON.stringify(data, null, 2), "utf-8");
+    const db = getDb();
+    const updates: Record<string, unknown> = { updatedAt: new Date().toISOString() };
+    if (body.name !== undefined) updates.name = body.name;
+    if (body.description !== undefined) updates.description = body.description;
+    if (body.versions !== undefined) updates.versions = body.versions;
+
+    await db.update(userPacks).set(updates).where(eq(userPacks.id, packId));
     return NextResponse.json({ status: "updated", id: packId });
   } catch (err) {
     return errorResponse(err);
@@ -77,9 +71,9 @@ export async function DELETE(_request: Request, context: RouteContext) {
     const auth = await requireSession();
     if (!auth.ok) return auth.response;
 
-    try {
-      await unlink(path.join(USER_PACKS_DIR, `${context.params.id}.json`));
-    } catch {
+    const db = getDb();
+    const result = await db.delete(userPacks).where(eq(userPacks.id, context.params.id));
+    if (result.rowCount === 0) {
       return NextResponse.json({ error: "Pack not found" }, { status: 404 });
     }
     return NextResponse.json({ status: "deleted" });

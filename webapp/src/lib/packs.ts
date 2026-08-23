@@ -1,12 +1,11 @@
 import path from "node:path";
-import { readdir, readFile, writeFile, unlink, mkdir } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
+import { eq } from "drizzle-orm";
+import { getDb } from "./db";
+import { userPacks } from "./db-schema";
 
 export const MIGRATION_PACKS_DIR =
   process.env.MIGRATION_PACKS_DIR || path.resolve(process.cwd(), "..", "migration-packs");
-
-export const USER_PACKS_DIR = process.env.USER_PACKS_DIR
-  ? path.resolve(process.env.USER_PACKS_DIR)
-  : path.resolve(process.cwd(), "data", "user-packs");
 
 export interface PackVersion {
   version: string;
@@ -58,11 +57,6 @@ export async function listBuiltinPacks(): Promise<
   return out;
 }
 
-export interface UserPackRecord extends PackFile {
-  name?: string;
-  id: string;
-}
-
 export async function getBuiltinPack(name: string): Promise<(PackFile & { library: string }) | null> {
   let files: string[] = [];
   try {
@@ -87,40 +81,45 @@ export async function getBuiltinPack(name: string): Promise<(PackFile & { librar
 export async function listUserPacks(): Promise<
   { id: string; name: string; description: string; library: string; version_count: number; rule_count: number; is_published: boolean; created_at: string; updated_at: string }[]
 > {
-  let files: string[] = [];
   try {
-    await mkdir(USER_PACKS_DIR, { recursive: true });
-    files = (await readdir(USER_PACKS_DIR)).filter((f) => f.endsWith(".json"));
+    const db = getDb();
+    const rows = await db.select().from(userPacks);
+    return rows.map((row) => {
+      const versions = (row.versions as PackVersion[]) ?? [];
+      return {
+        id: row.id,
+        name: row.name ?? row.library,
+        description: row.description ?? "",
+        library: row.library,
+        version_count: versions.length,
+        rule_count: versions.reduce((sum, v) => sum + (v.rules?.length ?? 0), 0),
+        is_published: row.isPublished ?? false,
+        created_at: row.createdAt ?? "",
+        updated_at: row.updatedAt ?? "",
+      };
+    });
   } catch {
     return [];
   }
-
-  const packs = [];
-  for (const file of files) {
-    try {
-      const content = await readFile(path.join(USER_PACKS_DIR, file), "utf-8");
-      const data = JSON.parse(content) as UserPackRecord;
-      const packId = file.replace(".json", "");
-      const versions = data.versions ?? [];
-      packs.push({
-        id: packId,
-        name: data.name ?? data.library ?? packId,
-        description: data.description ?? "",
-        library: data.library ?? packId,
-        version_count: versions.length,
-        rule_count: versions.reduce((sum, v) => sum + (v.rules?.length ?? 0), 0),
-        is_published: data.is_published ?? false,
-        created_at: data.created_at ?? "",
-        updated_at: data.updated_at ?? "",
-      });
-    } catch {
-      continue;
-    }
-  }
-  return packs;
 }
 
-export async function getUserPacksDir(): Promise<string> {
-  await mkdir(USER_PACKS_DIR, { recursive: true });
-  return USER_PACKS_DIR;
+export async function getUserPackById(id: string): Promise<Record<string, unknown> | null> {
+  try {
+    const db = getDb();
+    const rows = await db.select().from(userPacks).where(eq(userPacks.id, id)).limit(1);
+    if (rows.length === 0) return null;
+    const row = rows[0];
+    return {
+      library: row.library,
+      name: row.name,
+      description: row.description,
+      schema_version: row.schemaVersion,
+      is_published: row.isPublished,
+      created_at: row.createdAt,
+      updated_at: row.updatedAt,
+      versions: row.versions,
+    };
+  } catch {
+    return null;
+  }
 }
