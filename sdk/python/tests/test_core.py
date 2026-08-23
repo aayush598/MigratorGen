@@ -64,6 +64,7 @@ from migrator_gen.core.version_resolver import VersionResolver
 # Test Helpers
 # ==============================================================================
 
+
 def make_rule(**kwargs) -> MigrationRule:
     defaults = {
         "id": "TEST-001",
@@ -100,13 +101,39 @@ def transform_multi(code: str, rules: list[MigrationRule]) -> str:
 # 1. Changelog Parser Tests
 # ==============================================================================
 
+
 class TestChangelogParserBasics:
     """Test basic changelog parsing functionality."""
 
     def test_parse_minimal_json(self):
-        data = json.dumps({
-            "library": "testlib",
-            "versions": [
+        data = json.dumps(
+            {
+                "library": "testlib",
+                "versions": [
+                    {
+                        "version": "1.0.0",
+                        "rules": [
+                            {
+                                "id": "T1",
+                                "change_type": "rename_function",
+                                "version_introduced": "1.0.0",
+                                "description": "Test",
+                                "old_name": "a",
+                                "new_name": "b",
+                            }
+                        ],
+                    }
+                ],
+            }
+        )
+        parser = ChangelogParser()
+        changelogs = parser.parse(data)
+        assert len(changelogs) == 1
+        assert changelogs[0].version == "1.0.0"
+
+    def test_parse_list_format(self):
+        data = json.dumps(
+            [
                 {
                     "version": "1.0.0",
                     "rules": [
@@ -118,31 +145,10 @@ class TestChangelogParserBasics:
                             "old_name": "a",
                             "new_name": "b",
                         }
-                    ]
+                    ],
                 }
             ]
-        })
-        parser = ChangelogParser()
-        changelogs = parser.parse(data)
-        assert len(changelogs) == 1
-        assert changelogs[0].version == "1.0.0"
-
-    def test_parse_list_format(self):
-        data = json.dumps([
-            {
-                "version": "1.0.0",
-                "rules": [
-                    {
-                        "id": "T1",
-                        "change_type": "rename_function",
-                        "version_introduced": "1.0.0",
-                        "description": "Test",
-                        "old_name": "a",
-                        "new_name": "b",
-                    }
-                ]
-            }
-        ])
+        )
         parser = ChangelogParser()
         changelogs = parser.parse(data)
         assert len(changelogs) == 1
@@ -155,23 +161,23 @@ class TestChangelogParserBasics:
     def test_merge_changelogs_detects_new_versions(self):
         parser = ChangelogParser()
         old = [
-            VersionChangelog(version="1.0.0", rules=[
-                make_rule(id="R1", version_introduced="1.0.0")
-            ]),
-            VersionChangelog(version="2.0.0", rules=[
-                make_rule(id="R2", version_introduced="2.0.0")
-            ]),
+            VersionChangelog(
+                version="1.0.0", rules=[make_rule(id="R1", version_introduced="1.0.0")]
+            ),
+            VersionChangelog(
+                version="2.0.0", rules=[make_rule(id="R2", version_introduced="2.0.0")]
+            ),
         ]
         new = [
-            VersionChangelog(version="1.0.0", rules=[
-                make_rule(id="R1", version_introduced="1.0.0")
-            ]),
-            VersionChangelog(version="2.0.0", rules=[
-                make_rule(id="R2", version_introduced="2.0.0")
-            ]),
-            VersionChangelog(version="3.0.0", rules=[
-                make_rule(id="R3", version_introduced="3.0.0")
-            ]),
+            VersionChangelog(
+                version="1.0.0", rules=[make_rule(id="R1", version_introduced="1.0.0")]
+            ),
+            VersionChangelog(
+                version="2.0.0", rules=[make_rule(id="R2", version_introduced="2.0.0")]
+            ),
+            VersionChangelog(
+                version="3.0.0", rules=[make_rule(id="R3", version_introduced="3.0.0")]
+            ),
         ]
         merged = parser.merge_changelogs(old, new)
         assert len(merged) == 1
@@ -192,6 +198,7 @@ class TestChangelogParserBasics:
 
     def test_version_key_sorting(self):
         from migrator_gen.core.changelog_parser import _version_key
+
         versions = ["1.10.0", "2.0.0", "1.9.0", "1.2.1", "0.9.9"]
         sorted_v = sorted(versions, key=_version_key)
         assert sorted_v == ["0.9.9", "1.2.1", "1.9.0", "1.10.0", "2.0.0"]
@@ -209,6 +216,7 @@ class TestChangelogParserBasics:
 # ==============================================================================
 # 2. Version Resolver Tests
 # ==============================================================================
+
 
 class TestVersionResolver:
     """Test version resolution and migration path building."""
@@ -274,6 +282,7 @@ class TestVersionResolver:
 # 3. All Transformer Tests
 # ==============================================================================
 
+
 class TestRenameFunctionTransformer:
     def test_renames_function_call(self):
         code = "result = old_func(x, y)"
@@ -306,226 +315,289 @@ class TestRenameFunctionTransformer:
 class TestRenameClassTransformer:
     def test_renames_class_usage(self):
         code = "client = MyClass()"
-        result = transform(code, make_rule(
-            change_type=ChangeType.RENAME_CLASS,
-            old_name="MyClass",
-            new_name="NewClass",
-        ))
+        result = transform(
+            code,
+            make_rule(
+                change_type=ChangeType.RENAME_CLASS,
+                old_name="MyClass",
+                new_name="NewClass",
+            ),
+        )
         assert "NewClass" in result
         assert "MyClass" not in result
 
     def test_renames_class_definition(self):
         code = "class MyClass:\n    pass"
-        result = transform(code, make_rule(
-            change_type=ChangeType.RENAME_CLASS,
-            old_name="MyClass",
-            new_name="NewClass",
-        ))
+        result = transform(
+            code,
+            make_rule(
+                change_type=ChangeType.RENAME_CLASS,
+                old_name="MyClass",
+                new_name="NewClass",
+            ),
+        )
         assert "class NewClass" in result
 
 
 class TestRenameImportTransformer:
     def test_renames_from_import(self):
         code = "from mylib import OldName"
-        result = transform(code, make_rule(
-            change_type=ChangeType.RENAME_IMPORT,
-            old_name="OldName",
-            new_name="NewName",
-            old_module="mylib",
-            new_module="mylib.new",
-        ))
+        result = transform(
+            code,
+            make_rule(
+                change_type=ChangeType.RENAME_IMPORT,
+                old_name="OldName",
+                new_name="NewName",
+                old_module="mylib",
+                new_module="mylib.new",
+            ),
+        )
         assert "NewName" in result
         assert "mylib.new" in result
         assert "OldName" not in result
 
     def test_renames_import_alias(self):
         code = "from mylib import OldName as Alias"
-        result = transform(code, make_rule(
-            change_type=ChangeType.RENAME_IMPORT,
-            old_name="OldName",
-            new_name="NewName",
-            old_module="mylib",
-            new_module="mylib.new",
-        ))
+        result = transform(
+            code,
+            make_rule(
+                change_type=ChangeType.RENAME_IMPORT,
+                old_name="OldName",
+                new_name="NewName",
+                old_module="mylib",
+                new_module="mylib.new",
+            ),
+        )
         assert "NewName" in result
 
     def test_no_change_wrong_module(self):
         code = "from otherlib import OldName"
-        result = transform(code, make_rule(
-            change_type=ChangeType.RENAME_IMPORT,
-            old_name="OldName",
-            new_name="NewName",
-            old_module="mylib",
-            new_module="mylib.new",
-        ))
+        result = transform(
+            code,
+            make_rule(
+                change_type=ChangeType.RENAME_IMPORT,
+                old_name="OldName",
+                new_name="NewName",
+                old_module="mylib",
+                new_module="mylib.new",
+            ),
+        )
         assert result == code
 
 
 class TestRenameAttributeTransformer:
     def test_renames_attribute_access(self):
         code = "x = obj.old_attr"
-        result = transform(code, make_rule(
-            change_type=ChangeType.RENAME_ATTRIBUTE,
-            old_name="old_attr",
-            new_name="new_attr",
-        ))
+        result = transform(
+            code,
+            make_rule(
+                change_type=ChangeType.RENAME_ATTRIBUTE,
+                old_name="old_attr",
+                new_name="new_attr",
+            ),
+        )
         assert "obj.new_attr" in result
 
     def test_renames_nested_attribute(self):
         code = "x = a.b.c.old_attr"
-        result = transform(code, make_rule(
-            change_type=ChangeType.RENAME_ATTRIBUTE,
-            old_name="old_attr",
-            new_name="new_attr",
-        ))
+        result = transform(
+            code,
+            make_rule(
+                change_type=ChangeType.RENAME_ATTRIBUTE,
+                old_name="old_attr",
+                new_name="new_attr",
+            ),
+        )
         assert "new_attr" in result
 
     def test_does_not_rename_standalone_name(self):
         code = "old_attr = 5"
-        result = transform(code, make_rule(
-            change_type=ChangeType.RENAME_ATTRIBUTE,
-            old_name="old_attr",
-            new_name="new_attr",
-        ))
+        result = transform(
+            code,
+            make_rule(
+                change_type=ChangeType.RENAME_ATTRIBUTE,
+                old_name="old_attr",
+                new_name="new_attr",
+            ),
+        )
         assert "old_attr" in result
 
 
 class TestAddArgumentTransformer:
     def test_adds_argument(self):
         code = "connect(host='localhost')"
-        result = transform(code, make_rule(
-            change_type=ChangeType.ADD_ARGUMENT,
-            function_name="connect",
-            argument_name="timeout",
-            default_value="30",
-        ))
+        result = transform(
+            code,
+            make_rule(
+                change_type=ChangeType.ADD_ARGUMENT,
+                function_name="connect",
+                argument_name="timeout",
+                default_value="30",
+            ),
+        )
         assert "timeout=30" in result
 
     def test_does_not_duplicate_argument(self):
         code = "connect(host='localhost', timeout=10)"
-        result = transform(code, make_rule(
-            change_type=ChangeType.ADD_ARGUMENT,
-            function_name="connect",
-            argument_name="timeout",
-            default_value="30",
-        ))
+        result = transform(
+            code,
+            make_rule(
+                change_type=ChangeType.ADD_ARGUMENT,
+                function_name="connect",
+                argument_name="timeout",
+                default_value="30",
+            ),
+        )
         assert result.count("timeout") == 1
 
     def test_adds_to_positional_only_call(self):
         code = "func(a, b)"
-        result = transform(code, make_rule(
-            change_type=ChangeType.ADD_ARGUMENT,
-            function_name="func",
-            argument_name="c",
-            default_value="None",
-        ))
+        result = transform(
+            code,
+            make_rule(
+                change_type=ChangeType.ADD_ARGUMENT,
+                function_name="func",
+                argument_name="c",
+                default_value="None",
+            ),
+        )
         assert "c=None" in result
 
 
 class TestRemoveArgumentTransformer:
     def test_removes_keyword_argument(self):
         code = "send_request(url, verbose=True)"
-        result = transform(code, make_rule(
-            change_type=ChangeType.REMOVE_ARGUMENT,
-            function_name="send_request",
-            argument_name="verbose",
-        ))
+        result = transform(
+            code,
+            make_rule(
+                change_type=ChangeType.REMOVE_ARGUMENT,
+                function_name="send_request",
+                argument_name="verbose",
+            ),
+        )
         assert "verbose" not in result
 
     def test_removes_positional_argument(self):
         code = "func(a, verbose=True, c=None)"
-        result = transform(code, make_rule(
-            change_type=ChangeType.REMOVE_ARGUMENT,
-            function_name="func",
-            argument_name="verbose",
-        ))
+        result = transform(
+            code,
+            make_rule(
+                change_type=ChangeType.REMOVE_ARGUMENT,
+                function_name="func",
+                argument_name="verbose",
+            ),
+        )
         assert "verbose" not in result
 
     def test_no_change_wrong_function(self):
         code = "other_func(verbose=True)"
-        result = transform(code, make_rule(
-            change_type=ChangeType.REMOVE_ARGUMENT,
-            function_name="func",
-            argument_name="verbose",
-        ))
+        result = transform(
+            code,
+            make_rule(
+                change_type=ChangeType.REMOVE_ARGUMENT,
+                function_name="func",
+                argument_name="verbose",
+            ),
+        )
         assert result == code
 
 
 class TestRenameArgumentTransformer:
     def test_renames_argument(self):
         code = "connect(host='localhost', timeout=30)"
-        result = transform(code, make_rule(
-            change_type=ChangeType.RENAME_ARGUMENT,
-            function_name="connect",
-            argument_name="timeout",
-            new_argument_name="conn_timeout",
-        ))
+        result = transform(
+            code,
+            make_rule(
+                change_type=ChangeType.RENAME_ARGUMENT,
+                function_name="connect",
+                argument_name="timeout",
+                new_argument_name="conn_timeout",
+            ),
+        )
         assert "conn_timeout" in result
         assert result == "connect(host='localhost', conn_timeout=30)"
 
     def test_renames_without_value(self):
         code = "func(my_arg=value)"
-        result = transform(code, make_rule(
-            change_type=ChangeType.RENAME_ARGUMENT,
-            function_name="func",
-            argument_name="my_arg",
-            new_argument_name="new_arg",
-        ))
+        result = transform(
+            code,
+            make_rule(
+                change_type=ChangeType.RENAME_ARGUMENT,
+                function_name="func",
+                argument_name="my_arg",
+                new_argument_name="new_arg",
+            ),
+        )
         assert "new_arg=" in result
 
 
 class TestChangeArgumentDefaultTransformer:
     def test_changes_default_value(self):
         code = "def func(x, timeout=10):\n    pass"
-        result = transform(code, make_rule(
-            change_type=ChangeType.CHANGE_ARGUMENT_DEFAULT,
-            argument_name="timeout",
-            default_value="60",
-        ))
+        result = transform(
+            code,
+            make_rule(
+                change_type=ChangeType.CHANGE_ARGUMENT_DEFAULT,
+                argument_name="timeout",
+                default_value="60",
+            ),
+        )
         assert "timeout=60" in result
 
 
 class TestReorderArgumentsTransformer:
     def test_reorders_parameters(self):
         code = "def func(a, b, c):\n    pass"
-        result = transform(code, make_rule(
-            change_type=ChangeType.REORDER_ARGUMENTS,
-            function_name="func",
-            new_order=["c", "a", "b"],
-        ))
+        result = transform(
+            code,
+            make_rule(
+                change_type=ChangeType.REORDER_ARGUMENTS,
+                function_name="func",
+                new_order=["c", "a", "b"],
+            ),
+        )
         assert "c" in result
 
 
 class TestMoveToModuleTransformer:
     def test_moves_import(self):
         code = "from mylib.old import MyClass"
-        result = transform(code, make_rule(
-            change_type=ChangeType.MOVE_TO_MODULE,
-            old_name="MyClass",
-            source_module="mylib.old",
-            target_module="mylib.new",
-        ))
+        result = transform(
+            code,
+            make_rule(
+                change_type=ChangeType.MOVE_TO_MODULE,
+                old_name="MyClass",
+                source_module="mylib.old",
+                target_module="mylib.new",
+            ),
+        )
         assert "mylib.new" in result
 
     def test_moves_nested_module(self):
         code = "from a.b.c import Symbol"
-        result = transform(code, make_rule(
-            change_type=ChangeType.MOVE_TO_MODULE,
-            old_name="Symbol",
-            source_module="a.b.c",
-            target_module="x.y.z",
-        ))
+        result = transform(
+            code,
+            make_rule(
+                change_type=ChangeType.MOVE_TO_MODULE,
+                old_name="Symbol",
+                source_module="a.b.c",
+                target_module="x.y.z",
+            ),
+        )
         assert "x.y.z" in result
 
 
 class TestDeprecateFunctionTransformer:
     def test_adds_deprecation_comment(self):
         code = "old_func()"
-        result = transform(code, make_rule(
-            change_type=ChangeType.DEPRECATE_FUNCTION,
-            old_name="old_func",
-            replacement="new_func",
-        ))
+        result = transform(
+            code,
+            make_rule(
+                change_type=ChangeType.DEPRECATE_FUNCTION,
+                old_name="old_func",
+                replacement="new_func",
+            ),
+        )
         assert "DEPRECATED" in result
         assert "new_func" in result
 
@@ -533,31 +605,40 @@ class TestDeprecateFunctionTransformer:
 class TestAddDecoratorTransformer:
     def test_adds_decorator(self):
         code = "def handler(data):\n    pass"
-        result = transform(code, make_rule(
-            change_type=ChangeType.ADD_DECORATOR,
-            function_name="handler",
-            decorator_name="route",
-        ))
+        result = transform(
+            code,
+            make_rule(
+                change_type=ChangeType.ADD_DECORATOR,
+                function_name="handler",
+                decorator_name="route",
+            ),
+        )
         assert "@route" in result
 
     def test_no_duplicate_decorator(self):
         code = "@route\ndef handler(data):\n    pass"
-        result = transform(code, make_rule(
-            change_type=ChangeType.ADD_DECORATOR,
-            function_name="handler",
-            decorator_name="route",
-        ))
+        result = transform(
+            code,
+            make_rule(
+                change_type=ChangeType.ADD_DECORATOR,
+                function_name="handler",
+                decorator_name="route",
+            ),
+        )
         assert result.count("@route") == 1
 
 
 class TestRemoveDecoratorTransformer:
     def test_removes_decorator(self):
         code = "@route\n@auth\ndef handler(data):\n    pass"
-        result = transform(code, make_rule(
-            change_type=ChangeType.REMOVE_DECORATOR,
-            function_name="handler",
-            decorator_name="auth",
-        ))
+        result = transform(
+            code,
+            make_rule(
+                change_type=ChangeType.REMOVE_DECORATOR,
+                function_name="handler",
+                decorator_name="auth",
+            ),
+        )
         assert "@auth" not in result
         assert "@route" in result
 
@@ -565,21 +646,27 @@ class TestRemoveDecoratorTransformer:
 class TestReplaceWithPropertyTransformer:
     def test_replaces_method_call_with_property(self):
         code = "name = obj.get_name()"
-        result = transform(code, make_rule(
-            change_type=ChangeType.REPLACE_WITH_PROPERTY,
-            old_name="get_name",
-            new_name="name",
-        ))
+        result = transform(
+            code,
+            make_rule(
+                change_type=ChangeType.REPLACE_WITH_PROPERTY,
+                old_name="get_name",
+                new_name="name",
+            ),
+        )
         assert "obj.name" in result
         assert "get_name" not in result
 
     def test_does_not_replace_if_args_present(self):
         code = "name = obj.get_name(arg=True)"
-        result = transform(code, make_rule(
-            change_type=ChangeType.REPLACE_WITH_PROPERTY,
-            old_name="get_name",
-            new_name="name",
-        ))
+        result = transform(
+            code,
+            make_rule(
+                change_type=ChangeType.REPLACE_WITH_PROPERTY,
+                old_name="get_name",
+                new_name="name",
+            ),
+        )
         assert "get_name" in result
 
 
@@ -614,23 +701,43 @@ class TestTransformerMapComplete:
             elif ct == ChangeType.REPLACE_WITH_PROPERTY:
                 rule = make_rule(change_type=ct, old_name="getx", new_name="x")
             elif ct == ChangeType.MOVE_TO_MODULE:
-                rule = make_rule(change_type=ct, old_name="Sym", source_module="a.b", target_module="a.c")
+                rule = make_rule(
+                    change_type=ct, old_name="Sym", source_module="a.b", target_module="a.c"
+                )
             elif ct == ChangeType.RENAME_ARGUMENT:
-                rule = make_rule(change_type=ct, function_name="foo", argument_name="x", new_argument_name="y")
+                rule = make_rule(
+                    change_type=ct, function_name="foo", argument_name="x", new_argument_name="y"
+                )
             elif ct == ChangeType.SYNC_TO_ASYNC:
-                rule = make_rule(change_type=ct, function_name="foo", extra={"convert_to_async": True})
+                rule = make_rule(
+                    change_type=ct, function_name="foo", extra={"convert_to_async": True}
+                )
             elif ct == ChangeType.WRAP_IN_CONTEXT_MANAGER:
-                rule = make_rule(change_type=ct, function_name="foo", decorator_name="contextmanager")
+                rule = make_rule(
+                    change_type=ct, function_name="foo", decorator_name="contextmanager"
+                )
             elif ct == ChangeType.CLASS_SPLIT:
-                rule = make_rule(change_type=ct, extra={"split_class": "Foo", "new_class_name": "Bar", "extract_methods": ["m"]})
+                rule = make_rule(
+                    change_type=ct,
+                    extra={"split_class": "Foo", "new_class_name": "Bar", "extract_methods": ["m"]},
+                )
             elif ct == ChangeType.MODULE_SPLIT:
-                rule = make_rule(change_type=ct, source_module="a.b", extra={"extract_symbols": ["Sym"]}, target_module="a.c")
+                rule = make_rule(
+                    change_type=ct,
+                    source_module="a.b",
+                    extra={"extract_symbols": ["Sym"]},
+                    target_module="a.c",
+                )
             elif ct == ChangeType.CHANGE_RETURN_TYPE:
-                rule = make_rule(change_type=ct, function_name="foo", extra={"new_return_type": "int"})
+                rule = make_rule(
+                    change_type=ct, function_name="foo", extra={"new_return_type": "int"}
+                )
             elif ct == ChangeType.ENUM_MIGRATION:
                 rule = make_rule(change_type=ct, old_name="OLD", new_name="NEW")
             elif ct == ChangeType.DATACLASS_FIELD_CHANGE:
-                rule = make_rule(change_type=ct, old_name="f", new_name="g", extra={"field_operation": "rename"})
+                rule = make_rule(
+                    change_type=ct, old_name="f", new_name="g", extra={"field_operation": "rename"}
+                )
             else:
                 rule = make_rule(change_type=ct)
             transformer = get_transformer(rule)
@@ -640,6 +747,7 @@ class TestTransformerMapComplete:
 # ==============================================================================
 # 4. Advanced Transformer Tests
 # ==============================================================================
+
 
 class TestSyncToAsyncTransformer:
     def test_converts_function_to_async(self):
@@ -717,6 +825,7 @@ class TestRemoveRedundantPassTransformer:
 # 5. Validation Tests
 # ==============================================================================
 
+
 class TestRuleConditions:
     def test_rule_with_when_condition(self):
         rule = make_rule(
@@ -761,7 +870,13 @@ class TestValidationReport:
     def test_validation_passes_valid_rules(self):
         rules = [
             make_rule(id="V1", old_name="a", new_name="b"),
-            MigrationRule(id="V2", change_type=ChangeType.DEPRECATE_FUNCTION, version_introduced="2.0.0", description="test", old_name="foo"),
+            MigrationRule(
+                id="V2",
+                change_type=ChangeType.DEPRECATE_FUNCTION,
+                version_introduced="2.0.0",
+                description="test",
+                old_name="foo",
+            ),
         ]
         report = RuleValidator().validate_rules(rules)
         assert report.valid is True
@@ -787,17 +902,23 @@ class TestValidationReport:
 
     def test_validation_fails_duplicate_ids(self):
         with pytest.raises(Exception):
-            VersionChangelog(version="1.0.0", rules=[
-                make_rule(id="DUP1"),
-                make_rule(id="DUP1"),
-            ])
+            VersionChangelog(
+                version="1.0.0",
+                rules=[
+                    make_rule(id="DUP1"),
+                    make_rule(id="DUP1"),
+                ],
+            )
 
     def test_validation_fails_conflicting_renames(self):
         with pytest.raises(Exception):
-            VersionChangelog(version="1.0.0", rules=[
-                make_rule(id="C1", old_name="foo", new_name="bar"),
-                make_rule(id="C2", old_name="foo", new_name="baz"),
-            ])
+            VersionChangelog(
+                version="1.0.0",
+                rules=[
+                    make_rule(id="C1", old_name="foo", new_name="bar"),
+                    make_rule(id="C2", old_name="foo", new_name="baz"),
+                ],
+            )
 
     def test_validation_warns_on_builtin_rename(self):
         rule = make_rule(old_name="print", new_name="log")
@@ -820,6 +941,7 @@ class TestCapabilitiesRegistry:
 # ==============================================================================
 # 6. Dependency Graph Tests
 # ==============================================================================
+
 
 class TestRuleDependencyGraph:
     def test_resolve_simple_order(self):
@@ -866,6 +988,7 @@ class TestRuleDependencyGraph:
 # 7. Idempotency Tests
 # ==============================================================================
 
+
 class TestIdempotencyChecker:
     def test_fingerprint_stable(self):
         r1 = make_rule()
@@ -897,6 +1020,7 @@ class TestIdempotencyChecker:
 # ==============================================================================
 # 8. Symbol Resolver Tests
 # ==============================================================================
+
 
 class TestImportGraph:
     def test_add_import(self):
@@ -933,15 +1057,14 @@ class TestConfidenceScorer:
             if isinstance(node, cst.SimpleStatementLine):
                 stmt = node.body[0]
                 if isinstance(stmt, cst.ImportFrom):
-                    score = ConfidenceScorer.score_import_change(
-                        stmt, "mylib", "MyClass"
-                    )
+                    score = ConfidenceScorer.score_import_change(stmt, "mylib", "MyClass")
                     assert score == 0.98
 
 
 # ==============================================================================
 # 9. Migration Engine Tests
 # ==============================================================================
+
 
 class TestMigrationEngineBasics:
     def test_migrate_code_single_rule(self):
@@ -955,8 +1078,18 @@ class TestMigrationEngineBasics:
     def test_migrate_code_multiple_rules(self):
         code = "Client()\nconnect()"
         rules = [
-            make_rule(id="R1", change_type=ChangeType.RENAME_CLASS, old_name="Client", new_name="APIClient"),
-            make_rule(id="R2", change_type=ChangeType.RENAME_FUNCTION, old_name="connect", new_name="create_connection"),
+            make_rule(
+                id="R1",
+                change_type=ChangeType.RENAME_CLASS,
+                old_name="Client",
+                new_name="APIClient",
+            ),
+            make_rule(
+                id="R2",
+                change_type=ChangeType.RENAME_FUNCTION,
+                old_name="connect",
+                new_name="create_connection",
+            ),
         ]
         engine = TransactionalMigrationEngine(interactive_approval=False)
         result = engine.migrate_code(code, rules)
@@ -1044,6 +1177,7 @@ class TestMigrationReport:
 # 10. Diff Analyzer Tests
 # ==============================================================================
 
+
 class TestChangelogToRulesConverter:
     def test_parses_rename_function(self):
         text = "renamed foo() to bar()"
@@ -1121,9 +1255,12 @@ class TestGitDiffAnalyzer:
         new_code = "def foo():\n    return 42"
         analyzer = GitDiffAnalyzer(old_code, new_code)
         rules = analyzer.analyze()
-        structural_rules = [r for r in rules if r["change_type"] in (
-            "rename_function", "rename_class", "add_argument", "remove_argument"
-        )]
+        structural_rules = [
+            r
+            for r in rules
+            if r["change_type"]
+            in ("rename_function", "rename_class", "add_argument", "remove_argument")
+        ]
         assert len(structural_rules) == 0
 
     def test_rules_have_required_fields(self):
@@ -1158,6 +1295,7 @@ class TestExportRules:
 # ==============================================================================
 # 11. LLM Engine Tests
 # ==============================================================================
+
 
 class TestLLMSuggestionEngine:
     def test_suggests_from_missing_argument_error(self):
@@ -1235,6 +1373,7 @@ class TestBreakingChange:
 # 12. AST Extractor Tests
 # ==============================================================================
 
+
 class TestASTExtractor:
     def test_extracts_functions(self):
         code = "def foo(a, b=10):\n    pass\ndef bar():\n    pass"
@@ -1268,6 +1407,7 @@ class TestASTExtractor:
 # ==============================================================================
 # 13. Parallel Engine Tests
 # ==============================================================================
+
 
 class TestASTCache:
     def test_cache_put_and_get(self):
@@ -1314,6 +1454,7 @@ class TestParallelMigrationReport:
 # 14. Integration Tests (Full Pipeline)
 # ==============================================================================
 
+
 class TestFullMigrationPipeline:
     """End-to-end integration tests."""
 
@@ -1332,11 +1473,32 @@ class TestFullMigrationPipeline:
 
     def test_migration_with_all_rule_types(self):
         rules = [
-            make_rule(id="T1", change_type=ChangeType.RENAME_FUNCTION, old_name="old_f", new_name="new_f"),
-            make_rule(id="T2", change_type=ChangeType.RENAME_CLASS, old_name="OldC", new_name="NewC"),
-            make_rule(id="T3", change_type=ChangeType.ADD_ARGUMENT, function_name="func", argument_name="opt", default_value="None"),
-            make_rule(id="T4", change_type=ChangeType.MOVE_TO_MODULE, old_name="Sym", source_module="old", target_module="new"),
-            make_rule(id="T5", change_type=ChangeType.DEPRECATE_FUNCTION, old_name="dep", replacement="new_dep"),
+            make_rule(
+                id="T1", change_type=ChangeType.RENAME_FUNCTION, old_name="old_f", new_name="new_f"
+            ),
+            make_rule(
+                id="T2", change_type=ChangeType.RENAME_CLASS, old_name="OldC", new_name="NewC"
+            ),
+            make_rule(
+                id="T3",
+                change_type=ChangeType.ADD_ARGUMENT,
+                function_name="func",
+                argument_name="opt",
+                default_value="None",
+            ),
+            make_rule(
+                id="T4",
+                change_type=ChangeType.MOVE_TO_MODULE,
+                old_name="Sym",
+                source_module="old",
+                target_module="new",
+            ),
+            make_rule(
+                id="T5",
+                change_type=ChangeType.DEPRECATE_FUNCTION,
+                old_name="dep",
+                replacement="new_dep",
+            ),
         ]
 
         code = """
@@ -1353,10 +1515,22 @@ func(required=True)
 
     def test_validation_then_migration(self):
         rules_data = [
-            {"id": "V1", "change_type": "rename_function", "version_introduced": "1.0.0",
-             "description": "test", "old_name": "x", "new_name": "y"},
-            {"id": "V2", "change_type": "rename_function", "version_introduced": "1.0.0",
-             "description": "test2", "old_name": "a", "new_name": "b"},
+            {
+                "id": "V1",
+                "change_type": "rename_function",
+                "version_introduced": "1.0.0",
+                "description": "test",
+                "old_name": "x",
+                "new_name": "y",
+            },
+            {
+                "id": "V2",
+                "change_type": "rename_function",
+                "version_introduced": "1.0.0",
+                "description": "test2",
+                "old_name": "a",
+                "new_name": "b",
+            },
         ]
         rules = [MigrationRule.from_dict(r) for r in rules_data]
         report = RuleValidator().validate_rules(rules)
@@ -1372,7 +1546,7 @@ func(required=True)
         code = "foo()"
 
         engine = TransactionalMigrationEngine(interactive_approval=False)
-        preview = engine.preview_migration(code, rules)
+        engine.preview_migration(code, rules)
         result = engine.migrate_code(code, rules, dry_run=False)
 
         assert "bar" in result.transformed_code
@@ -1418,6 +1592,7 @@ class TestEdgeCases:
 # ==============================================================================
 # 15. RuleWhenCondition Tests
 # ==============================================================================
+
 
 class TestRuleWhenCondition:
     def test_imported_from_condition(self):

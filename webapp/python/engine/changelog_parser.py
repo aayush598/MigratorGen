@@ -100,18 +100,26 @@ class MigrationRule(BaseModel):
     def check_required_fields(self):
         if self.change_type == ChangeType.RENAME_FUNCTION:
             if not self.old_name or not self.new_name:
-                raise ValueError("Missing required field for rename_function: old_name and new_name are required")
+                raise ValueError(
+                    "Missing required field for rename_function: old_name and new_name are required"
+                )
         if self.change_type == ChangeType.ADD_ARGUMENT:
             if not self.function_name or not self.argument_name:
-                raise ValueError("Missing required field for add_argument: function_name and argument_name are required")
+                raise ValueError(
+                    "Missing required field for add_argument: function_name and argument_name are required"
+                )
         if self.change_type == ChangeType.CHANGE_ARGUMENT_DEFAULT:
             if not self.argument_name or not self.default_value:
-                raise ValueError("Missing required field for change_argument_default: argument_name and default_value are required")
+                raise ValueError(
+                    "Missing required field for change_argument_default: argument_name and default_value are required"
+                )
         if self.default_value:
             try:
                 ast.parse(self.default_value, mode="eval")
             except SyntaxError as e:
-                raise ValueError(f"Invalid Python expression in default_value: {self.default_value}") from e
+                raise ValueError(
+                    f"Invalid Python expression in default_value: {self.default_value}"
+                ) from e
         return self
 
     def to_dict(self) -> dict[str, Any]:
@@ -138,11 +146,17 @@ class VersionChangelog(BaseModel):
     def check_conflicting_renames(self):
         seen_renames: dict[str, str] = {}
         for rule in self.rules:
-            if rule.change_type in (ChangeType.RENAME_FUNCTION, ChangeType.RENAME_CLASS, ChangeType.RENAME_ATTRIBUTE):
+            if rule.change_type in (
+                ChangeType.RENAME_FUNCTION,
+                ChangeType.RENAME_CLASS,
+                ChangeType.RENAME_ATTRIBUTE,
+            ):
                 if rule.old_name not in seen_renames:
                     seen_renames[rule.old_name] = rule.id
                 else:
-                    raise ValueError(f"Conflicting rename rule: {rule.old_name} appears twice with different targets: '{seen_renames[rule.old_name]}' vs '{rule.id}'")
+                    raise ValueError(
+                        f"Conflicting rename rule: {rule.old_name} appears twice with different targets: '{seen_renames[rule.old_name]}' vs '{rule.id}'"
+                    )
         return self
 
     def to_dict(self) -> dict[str, Any]:
@@ -163,7 +177,9 @@ class MigrationFile(BaseModel):
         seen_ids: dict[str, str] = {}
         for rule in all_rules:
             if rule.id in seen_ids:
-                raise ValueError(f"Duplicate rule ID: {rule.id} (first seen in {seen_ids[rule.id]})")
+                raise ValueError(
+                    f"Duplicate rule ID: {rule.id} (first seen in {seen_ids[rule.id]})"
+                )
             seen_ids[rule.id] = rule.id
         return self
 
@@ -188,6 +204,7 @@ class ChangelogParser:
             rules.extend(vc.rules)
 
         from .validation import RuleValidator
+
         report = RuleValidator().validate_rules(rules)
         if not report.valid:
             errors_str = "\n".join([f"- [Rule {e.rule_id}]: {e.message}" for e in report.errors])

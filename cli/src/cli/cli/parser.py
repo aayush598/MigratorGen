@@ -42,26 +42,18 @@ def build_parser() -> argparse.ArgumentParser:
 
     # ── update ──
     p = _add("update", help="Update existing migrator with new changelog")
-    p.add_argument(
-        "--existing", required=True, help="Path to existing migration_rules.json"
-    )
+    p.add_argument("--existing", required=True, help="Path to existing migration_rules.json")
     p.add_argument("--new-changelog", required=True, help="Path to new changelog")
-    p.add_argument(
-        "--output", help="Output directory (default: same as existing)"
-    )
+    p.add_argument("--output", help="Output directory (default: same as existing)")
     p.add_argument("--library", help="Library name override")
 
     # ── migrate / run ──
-    p = _add(
-        "migrate", aliases=["run"], help="Run migration on a file or directory"
-    )
+    p = _add("migrate", aliases=["run"], help="Run migration on a file or directory")
     p.add_argument("path", help="File or directory to migrate")
     p.add_argument("--rules", required=True, help="Path to migration_rules.json")
     p.add_argument("--from", dest="from_version", default="1.0.0")
     p.add_argument("--to", dest="to_version", default="latest")
-    p.add_argument(
-        "--dry-run", action="store_true", help="Preview only, no file changes"
-    )
+    p.add_argument("--dry-run", action="store_true", help="Preview only, no file changes")
 
     # ── preview ──
     p = _add("preview", help="Preview migration diff")
@@ -75,15 +67,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--rules", required=True, help="Path to migration_rules.json")
 
     # ── interactive ──
-    p = _add(
-        "interactive", help="Interactive rule builder (guided prompts)"
-    )
+    p = _add("interactive", help="Interactive rule builder (guided prompts)")
     p.add_argument("--output", help="Output file for rules (default: rules_<version>.json)")
 
     # ── export-schema ──
-    p = _add(
-        "export-schema", help="Export JSON schema for MigrationFile model"
-    )
+    p = _add("export-schema", help="Export JSON schema for MigrationFile model")
     p.add_argument(
         "--output",
         default="migration-schema.json",
@@ -91,15 +79,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     # ── validate-rules ──
-    p = _add(
-        "validate-rules", help="Validate a rules file for correctness"
-    )
+    p = _add("validate-rules", help="Validate a rules file for correctness")
     p.add_argument("file", help="JSON rules file to validate")
 
     # ── diff-rules ──
-    p = _add(
-        "diff-rules", help="Show diff between two rule sets"
-    )
+    p = _add("diff-rules", help="Show diff between two rule sets")
     p.add_argument("--old", required=True, help="Old rules file")
     p.add_argument("--new", required=True, help="New rules file")
 
@@ -109,12 +93,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--rules", required=True, help="Migration rules file")
 
     # ── auto-upgrade ──
-    p = _add(
-        "auto-upgrade", help="Auto-detect dependencies and suggest migrations"
-    )
+    p = _add("auto-upgrade", help="Auto-detect dependencies and suggest migrations")
     p.add_argument("directory", help="Project directory")
-    p.add_argument(
-        "--to", dest="to_version", default="latest", help="Target version"
-    )
+    p.add_argument("--to", dest="to_version", default="latest", help="Target version")
 
     return parser

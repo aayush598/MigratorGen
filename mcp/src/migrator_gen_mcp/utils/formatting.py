@@ -51,7 +51,9 @@ def format_migration_result(result: Any, dry_run: bool = False) -> str:
 def format_validation_report(report: Any) -> str:
     """Format a validation report for human-readable output."""
     lines = [f"Validation {'PASSED' if report.valid else 'FAILED'}"]
-    lines.append(f"Errors: {report.error_count}, Warnings: {report.warning_count}, Info: {report.info_count}")
+    lines.append(
+        f"Errors: {report.error_count}, Warnings: {report.warning_count}, Info: {report.info_count}"
+    )
     for e in report.errors:
         lines.append(f"[ERROR] [{e.rule_id}] {e.message}")
     for w in report.warnings:

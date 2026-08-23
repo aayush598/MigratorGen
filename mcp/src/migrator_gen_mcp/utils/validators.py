@@ -43,6 +43,7 @@ def validate_version(version: str | None, field_name: str = "version") -> str:
     if not isinstance(version, str):
         raise ValidationError(f"{field_name} must be a string")
     import re
+
     if not re.match(r"^\d+\.\d+\.\d+$", version):
         raise ValidationError(f"Invalid version format: {version} (expected X.Y.Z)")
     return version

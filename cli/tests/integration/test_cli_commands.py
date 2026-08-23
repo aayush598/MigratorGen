@@ -7,25 +7,27 @@ from pathlib import Path
 
 from cli.cli.app import main
 
-SAMPLE_CHANGELOG = json.dumps({
-    "library": "testlib",
-    "versions": [
-        {
-            "version": "2.0.0",
-            "release_date": "2025-01-01",
-            "rules": [
-                {
-                    "id": "T-001",
-                    "change_type": "rename_function",
-                    "description": "connect → create_connection",
-                    "old_name": "connect",
-                    "new_name": "create_connection",
-                    "version_introduced": "2.0.0",
-                }
-            ],
-        }
-    ],
-})
+SAMPLE_CHANGELOG = json.dumps(
+    {
+        "library": "testlib",
+        "versions": [
+            {
+                "version": "2.0.0",
+                "release_date": "2025-01-01",
+                "rules": [
+                    {
+                        "id": "T-001",
+                        "change_type": "rename_function",
+                        "description": "connect → create_connection",
+                        "old_name": "connect",
+                        "new_name": "create_connection",
+                        "version_introduced": "2.0.0",
+                    }
+                ],
+            }
+        ],
+    }
+)
 
 
 class TestMainDispatch:

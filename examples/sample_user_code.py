@@ -12,7 +12,7 @@ client = Client()
 # Old connection style
 conn = connect(host="localhost", port=5432)
 
-# Old request method  
+# Old request method
 response = send_request(conn, "/api/data", verbose=True)
 
 # Old attribute access

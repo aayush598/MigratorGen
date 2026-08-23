@@ -52,6 +52,7 @@ class RetryStrategy:
 
     async def execute_async(self, fn: Callable[[], Any], attempt: int = 1) -> Any:
         import asyncio
+
         while True:
             try:
                 return await fn()

@@ -8,19 +8,19 @@ from __future__ import annotations
 import hashlib
 import logging
 import secrets
-import time
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Any, Optional
 
 try:
     import jwt
+
     JWT_AVAILABLE = True
 except ImportError:
     JWT_AVAILABLE = False
 
 try:
     from passlib.context import CryptContext
+
     PWD_CONTEXT = CryptContext(schemes=["bcrypt"], deprecated="auto")
     PASSLIB_AVAILABLE = True
 except ImportError:
@@ -63,7 +63,7 @@ def create_access_token(
     role: str = "member",
     secret: str = "",
     expires_minutes: int = 15,
-    extra: Optional[dict] = None,
+    extra: dict | None = None,
 ) -> str:
     if not JWT_AVAILABLE:
         raise ImportError("PyJWT is required for JWT tokens")
@@ -103,7 +103,7 @@ def create_refresh_token(
     return jwt.encode(payload, secret, algorithm="HS256")
 
 
-def decode_token(token: str, secret: str) -> Optional[dict]:
+def decode_token(token: str, secret: str) -> dict | None:
     if not JWT_AVAILABLE:
         return None
     try:

@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
-
-from migrator_gen import Rule
 
 from migrator_gen_mcp.server.app import MigratorGenMCPServer
 
@@ -19,7 +16,9 @@ class TestToolHandlers:
         assert isinstance(result, str)
 
     def test_validate_rules(self, sample_rules_file: Path):
-        result = self.server.call_tool("validate_rules", {"rules_file_path": str(sample_rules_file)})
+        result = self.server.call_tool(
+            "validate_rules", {"rules_file_path": str(sample_rules_file)}
+        )
         assert "PASSED" in result or "FAILED" in result
 
     def test_explain_breaking_changes(self):

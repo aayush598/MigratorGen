@@ -1,7 +1,7 @@
 """
 SDKConfig — layered configuration: defaults → env vars → config file → kwargs.
 """
-from pathlib import Path
+
 from migrator_gen import SDKConfig
 
 # 1. Defaults

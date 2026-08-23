@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import logging
-import sys
 from typing import Any
 
 from migrator_gen import SyncMigrationClient
@@ -32,142 +31,172 @@ class MigratorGenMCPServer:
         self._register_tools()
 
     def _register_tools(self) -> None:
-        self._registry.register(MCPTool(
-            name="generate_rules",
-            description="Generate migration rules from a changelog or by comparing old and new code.",
-            categories=["generation"],
-            input_schema={
-                "type": "object",
-                "properties": {
-                    "mode": {"type": "string", "enum": ["changelog", "diff"], "default": "changelog"},
-                    "changelog_text": {"type": "string", "description": "Changelog text (markdown)"},
-                    "library_name": {"type": "string", "default": "unknown"},
-                    "old_code": {"type": "string", "description": "Original source code"},
-                    "new_code": {"type": "string", "description": "Updated source code"},
+        self._registry.register(
+            MCPTool(
+                name="generate_rules",
+                description="Generate migration rules from a changelog or by comparing old and new code.",
+                categories=["generation"],
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "mode": {
+                            "type": "string",
+                            "enum": ["changelog", "diff"],
+                            "default": "changelog",
+                        },
+                        "changelog_text": {
+                            "type": "string",
+                            "description": "Changelog text (markdown)",
+                        },
+                        "library_name": {"type": "string", "default": "unknown"},
+                        "old_code": {"type": "string", "description": "Original source code"},
+                        "new_code": {"type": "string", "description": "Updated source code"},
+                    },
                 },
-            },
-            handler=self._handlers.generate_rules,
-        ))
-        self._registry.register(MCPTool(
-            name="preview_migration",
-            description="Preview migration changes as a unified diff.",
-            categories=["migration"],
-            input_schema={
-                "type": "object",
-                "properties": {
-                    "source_code": {"type": "string"},
-                    "rules": {"type": "array", "items": {"type": "object"}},
-                    "source_version": {"type": "string"},
-                    "target_version": {"type": "string", "default": "latest"},
+                handler=self._handlers.generate_rules,
+            )
+        )
+        self._registry.register(
+            MCPTool(
+                name="preview_migration",
+                description="Preview migration changes as a unified diff.",
+                categories=["migration"],
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "source_code": {"type": "string"},
+                        "rules": {"type": "array", "items": {"type": "object"}},
+                        "source_version": {"type": "string"},
+                        "target_version": {"type": "string", "default": "latest"},
+                    },
+                    "required": ["source_code", "rules"],
                 },
-                "required": ["source_code", "rules"],
-            },
-            handler=self._handlers.preview_migration,
-        ))
-        self._registry.register(MCPTool(
-            name="run_migration",
-            description="Apply migration rules to source code.",
-            categories=["migration"],
-            input_schema={
-                "type": "object",
-                "properties": {
-                    "source_code": {"type": "string"},
-                    "rules": {"type": "array", "items": {"type": "object"}},
-                    "dry_run": {"type": "boolean", "default": False},
+                handler=self._handlers.preview_migration,
+            )
+        )
+        self._registry.register(
+            MCPTool(
+                name="run_migration",
+                description="Apply migration rules to source code.",
+                categories=["migration"],
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "source_code": {"type": "string"},
+                        "rules": {"type": "array", "items": {"type": "object"}},
+                        "dry_run": {"type": "boolean", "default": False},
+                    },
+                    "required": ["source_code", "rules"],
                 },
-                "required": ["source_code", "rules"],
-            },
-            handler=self._handlers.run_migration,
-        ))
-        self._registry.register(MCPTool(
-            name="validate_rules",
-            description="Validate migration rules from a file.",
-            categories=["validation"],
-            input_schema={
-                "type": "object",
-                "properties": {
-                    "rules_file_path": {"type": "string", "description": "Path to a rules JSON file"},
+                handler=self._handlers.run_migration,
+            )
+        )
+        self._registry.register(
+            MCPTool(
+                name="validate_rules",
+                description="Validate migration rules from a file.",
+                categories=["validation"],
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "rules_file_path": {
+                            "type": "string",
+                            "description": "Path to a rules JSON file",
+                        },
+                    },
+                    "required": ["rules_file_path"],
                 },
-                "required": ["rules_file_path"],
-            },
-            handler=self._handlers.validate_rules,
-        ))
-        self._registry.register(MCPTool(
-            name="analyze_code",
-            description="Analyse source code: extract imports, functions, classes.",
-            categories=["analysis"],
-            input_schema={
-                "type": "object",
-                "properties": {
-                    "source_code": {"type": "string"},
+                handler=self._handlers.validate_rules,
+            )
+        )
+        self._registry.register(
+            MCPTool(
+                name="analyze_code",
+                description="Analyse source code: extract imports, functions, classes.",
+                categories=["analysis"],
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "source_code": {"type": "string"},
+                    },
+                    "required": ["source_code"],
                 },
-                "required": ["source_code"],
-            },
-            handler=self._handlers.analyze_code,
-        ))
-        self._registry.register(MCPTool(
-            name="suggest_migrations",
-            description="Analyse a file and suggest migration packs that apply.",
-            categories=["analysis"],
-            input_schema={
-                "type": "object",
-                "properties": {
-                    "file_path": {"type": "string"},
-                    "destination_library": {"type": "string"},
+                handler=self._handlers.analyze_code,
+            )
+        )
+        self._registry.register(
+            MCPTool(
+                name="suggest_migrations",
+                description="Analyse a file and suggest migration packs that apply.",
+                categories=["analysis"],
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "file_path": {"type": "string"},
+                        "destination_library": {"type": "string"},
+                    },
+                    "required": ["file_path", "destination_library"],
                 },
-                "required": ["file_path", "destination_library"],
-            },
-            handler=self._handlers.suggest_migrations,
-        ))
-        self._registry.register(MCPTool(
-            name="list_libraries",
-            description="List libraries with available migration packs.",
-            categories=["discovery"],
-            input_schema={"type": "object", "properties": {}},
-            handler=self._handlers.list_libraries,
-        ))
-        self._registry.register(MCPTool(
-            name="explain_breaking_changes",
-            description="Explain breaking changes from a set of rules in human-readable terms.",
-            categories=["analysis"],
-            input_schema={
-                "type": "object",
-                "properties": {
-                    "rules": {"type": "array", "items": {"type": "object"}},
+                handler=self._handlers.suggest_migrations,
+            )
+        )
+        self._registry.register(
+            MCPTool(
+                name="list_libraries",
+                description="List libraries with available migration packs.",
+                categories=["discovery"],
+                input_schema={"type": "object", "properties": {}},
+                handler=self._handlers.list_libraries,
+            )
+        )
+        self._registry.register(
+            MCPTool(
+                name="explain_breaking_changes",
+                description="Explain breaking changes from a set of rules in human-readable terms.",
+                categories=["analysis"],
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "rules": {"type": "array", "items": {"type": "object"}},
+                    },
+                    "required": ["rules"],
                 },
-                "required": ["rules"],
-            },
-            handler=self._handlers.explain_breaking_changes,
-        ))
-        self._registry.register(MCPTool(
-            name="resolve_path",
-            description="Resolve the migration path between two versions of a library.",
-            categories=["migration"],
-            input_schema={
-                "type": "object",
-                "properties": {
-                    "source_version": {"type": "string"},
-                    "target_version": {"type": "string"},
-                    "library_name": {"type": "string"},
+                handler=self._handlers.explain_breaking_changes,
+            )
+        )
+        self._registry.register(
+            MCPTool(
+                name="resolve_path",
+                description="Resolve the migration path between two versions of a library.",
+                categories=["migration"],
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "source_version": {"type": "string"},
+                        "target_version": {"type": "string"},
+                        "library_name": {"type": "string"},
+                    },
+                    "required": ["source_version", "target_version", "library_name"],
                 },
-                "required": ["source_version", "target_version", "library_name"],
-            },
-            handler=self._handlers.resolve_path,
-        ))
-        self._registry.register(MCPTool(
-            name="create_migrator",
-            description="Generate a standalone pip-installable migrator package.",
-            categories=["generation"],
-            input_schema={
-                "type": "object",
-                "properties": {
-                    "library_name": {"type": "string"},
-                    "output_dir": {"type": "string", "default": "."},
+                handler=self._handlers.resolve_path,
+            )
+        )
+        self._registry.register(
+            MCPTool(
+                name="create_migrator",
+                description="Generate a standalone pip-installable migrator package.",
+                categories=["generation"],
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "library_name": {"type": "string"},
+                        "output_dir": {"type": "string", "default": "."},
+                    },
+                    "required": ["library_name"],
                 },
-                "required": ["library_name"],
-            },
-            handler=self._handlers.create_migrator,
-        ))
+                handler=self._handlers.create_migrator,
+            )
+        )
 
     def call_tool(self, name: str, arguments: dict[str, Any]) -> str:
         tool = self._registry.get(name)
@@ -210,6 +239,7 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.version:
         from ..version import __version__
+
         print(f"migrator-gen-mcp {__version__}")
         return
 
@@ -219,14 +249,22 @@ def main(argv: list[str] | None = None) -> None:
     )
 
     settings = load_settings(args.config) if args.config else MCPSettings()
-    settings = merge_settings(settings, {
-        "host": args.host,
-        "port": args.port,
-        "transport": args.transport,
-        "log_level": args.log_level,
-    })
+    settings = merge_settings(
+        settings,
+        {
+            "host": args.host,
+            "port": args.port,
+            "transport": args.transport,
+            "log_level": args.log_level,
+        },
+    )
 
-    log.info("Starting MCP server (transport=%s, host=%s, port=%d)", settings.transport, settings.host, settings.port)
+    log.info(
+        "Starting MCP server (transport=%s, host=%s, port=%d)",
+        settings.transport,
+        settings.host,
+        settings.port,
+    )
 
     if settings.transport == "stdio":
         run_stdio_server()

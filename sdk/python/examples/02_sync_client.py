@@ -1,5 +1,6 @@
 """Using SyncMigrationClient — the main entry point for local and remote use."""
-from migrator_gen import SyncMigrationClient, Rule, ChangeType
+
+from migrator_gen import ChangeType, Rule, SyncMigrationClient
 
 # Auto-detection — install libcst for local mode, or set base_url for remote
 with SyncMigrationClient(mode="local") as client:
@@ -7,9 +8,13 @@ with SyncMigrationClient(mode="local") as client:
 
     code = "result = fetch_data()"
     rules = [
-        Rule(id="R1", change_type=ChangeType.RENAME_FUNCTION,
-             old_name="fetch_data", new_name="get_data",
-             description="fetch_data → get_data"),
+        Rule(
+            id="R1",
+            change_type=ChangeType.RENAME_FUNCTION,
+            old_name="fetch_data",
+            new_name="get_data",
+            description="fetch_data → get_data",
+        ),
     ]
 
     # migrate_code — returns a MigrateResponse

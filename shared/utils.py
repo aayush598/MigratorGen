@@ -7,11 +7,10 @@ from __future__ import annotations
 import hashlib
 import re
 import uuid
+from collections.abc import Generator
 from datetime import datetime, timezone
 from functools import wraps
-from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, TypeVar
-
-import aiofiles
+from typing import Any, Callable, TypeVar
 
 
 def generate_request_id() -> str:
@@ -82,7 +81,7 @@ def validate_file_size(content: bytes, max_size_mb: int = 10) -> None:
 
 def validate_file_extension(
     filename: str,
-    allowed: Tuple[str, ...] = ("py", "txt", "pyi"),
+    allowed: tuple[str, ...] = ("py", "txt", "pyi"),
 ) -> None:
     """
     Validate file extension is allowed.
@@ -177,18 +176,14 @@ def chunked_reader(
         yield content[i : i + chunk_size]
 
 
-def merge_dicts(*dicts: Dict[str, Any]) -> Dict[str, Any]:
+def merge_dicts(*dicts: dict[str, Any]) -> dict[str, Any]:
     """Deep merge multiple dictionaries."""
     result = {}
     for d in dicts:
         if not d:
             continue
         for key, value in d.items():
-            if (
-                key in result
-                and isinstance(result[key], dict)
-                and isinstance(value, dict)
-            ):
+            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
                 result[key] = merge_dicts(result[key], value)
             else:
                 result[key] = value
@@ -196,7 +191,7 @@ def merge_dicts(*dicts: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def deep_get(
-    d: Dict[str, Any],
+    d: dict[str, Any],
     *keys: str,
     default: Any = None,
 ) -> Any:
@@ -220,7 +215,7 @@ def deep_get(
     return d
 
 
-def parse_version(version_str: str) -> Tuple[int, int, int]:
+def parse_version(version_str: str) -> tuple[int, int, int]:
     """
     Parse a semantic version string.
 
@@ -258,11 +253,13 @@ def retry_with_backoff(
     Returns:
         Decorated function
     """
+
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         @wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> T:
             import asyncio
-            last_error: Optional[Exception] = None
+
+            last_error: Exception | None = None
             delay = base_delay
             for attempt in range(max_attempts):
                 try:
@@ -275,7 +272,9 @@ def retry_with_backoff(
                             delay = min(delay * 2, max_delay)
             if last_error:
                 raise last_error
+
         return wrapper  # type: ignore
+
     return decorator
 
 

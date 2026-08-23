@@ -7,10 +7,11 @@ import logging
 import sys
 import uuid
 from enum import IntEnum
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 try:
     import structlog
+
     STRUCTLOG_AVAILABLE = True
 except ImportError:
     STRUCTLOG_AVAILABLE = False
@@ -86,7 +87,7 @@ class MigratorLogger:
         self.name = name
         self.service_name = service_name
         self._logger = logging.getLogger(name)
-        self._context: Dict[str, Any] = {}
+        self._context: dict[str, Any] = {}
 
     def bind(self, **kwargs) -> "MigratorLogger":
         """Bind additional context fields."""
@@ -97,9 +98,7 @@ class MigratorLogger:
     def _log(self, level: int, msg: str, **kwargs) -> None:
         """Internal log method."""
         extra = {**self._context, **kwargs}
-        record = self._logger.makeRecord(
-            self.name, level, "(unknown)", 0, msg, (), None, None
-        )
+        record = self._logger.makeRecord(self.name, level, "(unknown)", 0, msg, (), None, None)
         record.service_name = self.service_name
         for k, v in extra.items():
             setattr(record, k, v)

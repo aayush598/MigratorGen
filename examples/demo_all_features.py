@@ -38,7 +38,7 @@ from core.parallel_engine import ParallelMigrationEngine
 def banner(msg: str) -> None:
     print(f"\n{'=' * 60}")
     print(f" {msg}")
-    print('=' * 60)
+    print("=" * 60)
 
 
 def demo_parse_changelog() -> None:
@@ -265,7 +265,9 @@ result = utils.process(client)
                 func = stmt.value.func
                 if isinstance(func, cst.Name):
                     sym = resolver.resolve_symbol(func)
-                    print(f"  Symbol '{func.value}': resolved to import source '{ig.get_module_for_symbol(func.value)}'")
+                    print(
+                        f"  Symbol '{func.value}': resolved to import source '{ig.get_module_for_symbol(func.value)}'"
+                    )
 
 
 def demo_idempotency() -> None:
@@ -461,9 +463,10 @@ def main() -> None:
 
     print(f"\n{'=' * 60}")
     print(" Demo complete! All features working.")
-    print('=' * 60)
+    print("=" * 60)
 
 
 if __name__ == "__main__":
     import libcst as cst
+
     main()

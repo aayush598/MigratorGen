@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from pydantic import BaseModel, Field
 
 
@@ -18,7 +16,9 @@ class MCPSettings(BaseModel):
         default="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
         description="Log format string",
     )
-    max_tool_timeout: int = Field(default=60, ge=1, le=300, description="Max tool execution timeout in seconds")
+    max_tool_timeout: int = Field(
+        default=60, ge=1, le=300, description="Max tool execution timeout in seconds"
+    )
     allowed_origins: list[str] = Field(default=["*"], description="CORS allowed origins (HTTP)")
     request_validation: bool = Field(default=True, description="Enable input validation")
     tool_auto_discovery: bool = Field(default=True, description="Auto-register tools on init")

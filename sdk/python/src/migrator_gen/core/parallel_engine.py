@@ -110,12 +110,12 @@ def _migrate_file_worker(args: tuple[Path, list[dict], bool]) -> tuple[str, bool
     """Worker function for parallel file migration. Must be top-level for pickling."""
     file_path, rules_data, dry_run = args
 
-
     try:
         rules = [MigrationRule.from_dict(r) for r in rules_data]
         code = file_path.read_text(encoding="utf-8")
 
         from .migration_engine import TransactionalMigrationEngine
+
         engine = TransactionalMigrationEngine(transactional=False, interactive_approval=False)
 
         result = engine.migrate_code(code, rules, dry_run=dry_run)
@@ -185,7 +185,7 @@ class ParallelMigrationEngine:
                 filtered_files.append(f)
 
         rules_data = [r.to_dict() for r in path.rules]
-        rules_hash = IdempotencyChecker.compute_fingerprint(path.rules)
+        IdempotencyChecker.compute_fingerprint(path.rules)
 
         args_list = [(f, rules_data, dry_run) for f in filtered_files]
 
@@ -234,7 +234,9 @@ class ParallelMigrationEngine:
 
         files_modified = sum(1 for r in results.values() if r["was_modified"])
         total_changes = sum(len(r["changes"]) for r in results.values())
-        files_failed = sum(1 for r in results.values() if r["changes"] and "Error" in r["changes"][0])
+        files_failed = sum(
+            1 for r in results.values() if r["changes"] and "Error" in r["changes"][0]
+        )
 
         return ParallelMigrationReport(
             source_version=path.source_version,
@@ -272,7 +274,7 @@ class ParallelMigrationEngine:
         total_chunks = (len(filtered_files) + chunk_size - 1) // chunk_size
 
         for i in range(0, len(filtered_files), chunk_size):
-            chunk = filtered_files[i:i + chunk_size]
+            chunk = filtered_files[i : i + chunk_size]
             rules_data = [r.to_dict() for r in path.rules]
             args_list = [(f, rules_data, dry_run) for f in chunk]
 
@@ -300,7 +302,9 @@ class ParallelMigrationEngine:
 
         files_modified = sum(1 for r in all_results.values() if r["was_modified"])
         total_changes = sum(len(r["changes"]) for r in all_results.values())
-        files_failed = sum(1 for r in all_results.values() if r["changes"] and "Error" in r["changes"][0])
+        files_failed = sum(
+            1 for r in all_results.values() if r["changes"] and "Error" in r["changes"][0]
+        )
 
         return ParallelMigrationReport(
             source_version=path.source_version,
@@ -335,11 +339,11 @@ class ParallelMigrationReport:
             f"Total changes   : {self.total_changes}",
             f"Workers used    : {os.cpu_count() or 1}",
         ]
-        failed = [f for f, r in self.file_results.items() if r["changes"] and "Error" in r["changes"][0]]
+        failed = [
+            f for f, r in self.file_results.items() if r["changes"] and "Error" in r["changes"][0]
+        ]
         if failed:
             lines.append(f"\nFailed files ({len(failed)}):")
             for f in failed[:10]:
                 lines.append(f"  - {f}: {self.file_results[f]['changes'][0]}")
         return "\n".join(lines)
-
-

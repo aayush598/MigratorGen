@@ -55,7 +55,8 @@ class TestMigrateWorkflow:
         content = source_file.read_text()
         assert "create_connection" in content
         import re
-        assert not re.search(r'\bconnect\b', content)
+
+        assert not re.search(r"\bconnect\b", content)
 
     def test_migrate_dry_run(self, tmp_path: Path, capsys):
         rules_file = tmp_path / "rules.json"
@@ -91,7 +92,11 @@ class TestMigrateWorkflow:
 
         main(["preview", str(source_file), "--rules", str(rules_file)])
         captured = capsys.readouterr()
-        assert "diff" in captured.out.lower() or "rename" in captured.out or "create_connection" in captured.out
+        assert (
+            "diff" in captured.out.lower()
+            or "rename" in captured.out
+            or "create_connection" in captured.out
+        )
 
     def test_rules_list(self, tmp_path: Path, capsys):
         rules_file = tmp_path / "rules.json"
@@ -114,24 +119,26 @@ class TestMigrateWorkflow:
         new = tmp_path / "new.json"
         _write_rules(old)
         new.write_text(
-            json.dumps({
-                "library": "demo",
-                "versions": [
-                    {
-                        "version": "2.0.0",
-                        "rules": [
-                            {
-                                "id": "W-001",
-                                "change_type": "rename_class",
-                                "description": "OldC → NewC",
-                                "old_name": "OldC",
-                                "new_name": "NewC",
-                                "version_introduced": "2.0.0",
-                            }
-                        ],
-                    }
-                ],
-            })
+            json.dumps(
+                {
+                    "library": "demo",
+                    "versions": [
+                        {
+                            "version": "2.0.0",
+                            "rules": [
+                                {
+                                    "id": "W-001",
+                                    "change_type": "rename_class",
+                                    "description": "OldC → NewC",
+                                    "old_name": "OldC",
+                                    "new_name": "NewC",
+                                    "version_introduced": "2.0.0",
+                                }
+                            ],
+                        }
+                    ],
+                }
+            )
         )
 
         main(["diff-rules", "--old", str(old), "--new", str(new)])

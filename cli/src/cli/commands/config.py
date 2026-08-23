@@ -27,12 +27,14 @@ def cmd_create(ctx: CLIContext, out: OutputFormatter) -> None:
     out_path = client.generate_migrator_package(mf.library, str(output_dir))
 
     if ctx.json_mode:
-        out.print_json({
-            "library": mf.library,
-            "versions": len(mf.versions),
-            "rules": total_rules,
-            "output": out_path,
-        })
+        out.print_json(
+            {
+                "library": mf.library,
+                "versions": len(mf.versions),
+                "rules": total_rules,
+                "output": out_path,
+            }
+        )
     else:
         out.ok(f"Migrator created at: {out_path}")
 
@@ -173,7 +175,7 @@ def cmd_interactive(ctx: CLIContext, out: OutputFormatter) -> None:
         print("No rules created.")
         return
 
-    output = Path(args.output or f"rules_{version}.json")
+    output = Path(ctx.args.output or f"rules_{version}.json")
     lib = input("\nLibrary name: ").strip()
     mf = MigrationFile(
         library=lib,

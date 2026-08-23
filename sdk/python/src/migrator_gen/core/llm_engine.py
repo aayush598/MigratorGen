@@ -18,11 +18,13 @@ from typing import Any
 
 LLMProvider = None
 try:
-    from anthropic import Anthropic
+    from anthropic import Anthropic  # noqa: F401
+
     LLMProvider = "anthropic"
 except ImportError:
     try:
-        import openai
+        import openai  # noqa: F401
+
         LLMProvider = "openai"
     except ImportError:
         pass
@@ -82,7 +84,9 @@ class LLMSuggestionEngine:
     """
 
     def __init__(self, api_key: str | None = None, provider: str | None = None):
-        self.api_key = api_key or os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY")
+        self.api_key = (
+            api_key or os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY")
+        )
         self.provider = provider or LLMProvider or "mock"
         self._client = None
 
@@ -91,12 +95,14 @@ class LLMSuggestionEngine:
             if self.provider == "anthropic" or "ANTHROPIC" in str(type(self).__name__.upper()):
                 try:
                     from anthropic import Anthropic
+
                     self._client = Anthropic(api_key=self.api_key)
                 except ImportError:
                     pass
             elif self.provider == "openai" or "OPENAI" in str(type(self).__name__.upper()):
                 try:
                     import openai
+
                     openai.api_key = self.api_key
                     self._client = openai
                 except ImportError:
@@ -149,53 +155,61 @@ Otherwise, explain why it's not migration-related."""
             match = re.search(r"got an unexpected keyword argument '(\w+)'", error_message)
             if match:
                 arg_name = match.group(1)
-                suggestions.append(MigrationSuggestion(
-                    rule_id=f"SUGGEST-{len(suggestions)+1:03d}",
-                    change_type="add_argument",
-                    description=f"Consider adding argument '{arg_name}' to match expected API",
-                    confidence=SuggestionConfidence.MEDIUM,
-                    reasoning="This error suggests a missing argument that may have been added in a newer version",
-                    code_snippet=code_context,
-                ))
+                suggestions.append(
+                    MigrationSuggestion(
+                        rule_id=f"SUGGEST-{len(suggestions) + 1:03d}",
+                        change_type="add_argument",
+                        description=f"Consider adding argument '{arg_name}' to match expected API",
+                        confidence=SuggestionConfidence.MEDIUM,
+                        reasoning="This error suggests a missing argument that may have been added in a newer version",
+                        code_snippet=code_context,
+                    )
+                )
 
         if "module '.*' has no attribute" in error_message or "has no attribute" in error_lower:
             match = re.search(r"has no attribute '(\w+)'", error_message)
             if match:
                 attr_name = match.group(1)
-                suggestions.append(MigrationSuggestion(
-                    rule_id=f"SUGGEST-{len(suggestions)+1:03d}",
-                    change_type="rename_attribute",
-                    description=f"Attribute '{attr_name}' may have been renamed",
-                    confidence=SuggestionConfidence.MEDIUM,
-                    reasoning="Module attribute access error suggests a renamed attribute",
-                    code_snippet=code_context,
-                ))
+                suggestions.append(
+                    MigrationSuggestion(
+                        rule_id=f"SUGGEST-{len(suggestions) + 1:03d}",
+                        change_type="rename_attribute",
+                        description=f"Attribute '{attr_name}' may have been renamed",
+                        confidence=SuggestionConfidence.MEDIUM,
+                        reasoning="Module attribute access error suggests a renamed attribute",
+                        code_snippet=code_context,
+                    )
+                )
 
         if "import error" in error_lower or "cannot import name" in error_lower:
             match = re.search(r"cannot import name '(\w+)'", error_message)
             if match:
                 name = match.group(1)
-                suggestions.append(MigrationSuggestion(
-                    rule_id=f"SUGGEST-{len(suggestions)+1:03d}",
-                    change_type="move_to_module",
-                    description=f"Symbol '{name}' may have moved to a different module",
-                    confidence=SuggestionConfidence.MEDIUM,
-                    reasoning="Import error suggests the symbol has been relocated",
-                    code_snippet=code_context,
-                ))
+                suggestions.append(
+                    MigrationSuggestion(
+                        rule_id=f"SUGGEST-{len(suggestions) + 1:03d}",
+                        change_type="move_to_module",
+                        description=f"Symbol '{name}' may have moved to a different module",
+                        confidence=SuggestionConfidence.MEDIUM,
+                        reasoning="Import error suggests the symbol has been relocated",
+                        code_snippet=code_context,
+                    )
+                )
 
         if "deprecated" in error_lower:
             match = re.search(r"'(\w+)' is deprecated", error_message)
             if match:
                 name = match.group(1)
-                suggestions.append(MigrationSuggestion(
-                    rule_id=f"SUGGEST-{len(suggestions)+1:03d}",
-                    change_type="deprecate_function",
-                    description=f"Function '{name}' is deprecated",
-                    confidence=SuggestionConfidence.HIGH,
-                    reasoning="Deprecation warning detected directly from error",
-                    code_snippet=code_context,
-                ))
+                suggestions.append(
+                    MigrationSuggestion(
+                        rule_id=f"SUGGEST-{len(suggestions) + 1:03d}",
+                        change_type="deprecate_function",
+                        description=f"Function '{name}' is deprecated",
+                        confidence=SuggestionConfidence.HIGH,
+                        reasoning="Deprecation warning detected directly from error",
+                        code_snippet=code_context,
+                    )
+                )
 
         return suggestions
 
@@ -283,39 +297,47 @@ For each breaking change, provide:
         explanations = []
         for r in rules:
             ct = r.get("change_type", "unknown")
-            desc = r.get("description", "")
+            r.get("description", "")
             safety = r.get("safety", "review_required")
             old_name = r.get("old_name", "")
             new_name = r.get("new_name", "")
 
             if ct == "rename_function":
-                explanations.append(BreakingChange(
-                    description=f"Function '{old_name}' renamed to '{new_name}'. All call sites must be updated.",
-                    severity="high" if safety == "risky" else "medium",
-                    migration_strategy=f"Replace all occurrences of '{old_name}' with '{new_name}'",
-                    ai_explanation="This is a function rename affecting all usages.",
-                ))
+                explanations.append(
+                    BreakingChange(
+                        description=f"Function '{old_name}' renamed to '{new_name}'. All call sites must be updated.",
+                        severity="high" if safety == "risky" else "medium",
+                        migration_strategy=f"Replace all occurrences of '{old_name}' with '{new_name}'",
+                        ai_explanation="This is a function rename affecting all usages.",
+                    )
+                )
             elif ct == "remove_argument":
-                explanations.append(BreakingChange(
-                    description=f"Argument '{r.get('argument_name', '')}' removed from '{r.get('function_name', '')}()'. Call sites using this argument will fail.",
-                    severity="high",
-                    migration_strategy=f"Remove the '{r.get('argument_name')}' argument from all calls to '{r.get('function_name')}()'",
-                    ai_explanation="Removing arguments is a breaking change that requires updating all call sites.",
-                ))
+                explanations.append(
+                    BreakingChange(
+                        description=f"Argument '{r.get('argument_name', '')}' removed from '{r.get('function_name', '')}()'. Call sites using this argument will fail.",
+                        severity="high",
+                        migration_strategy=f"Remove the '{r.get('argument_name')}' argument from all calls to '{r.get('function_name')}()'",
+                        ai_explanation="Removing arguments is a breaking change that requires updating all call sites.",
+                    )
+                )
             elif ct == "move_to_module":
-                explanations.append(BreakingChange(
-                    description=f"Symbol moved from '{r.get('source_module')}' to '{r.get('target_module')}'",
-                    severity="medium",
-                    migration_strategy=f"Update import statements from '{r.get('source_module')}' to '{r.get('target_module')}'",
-                    ai_explanation="Module relocation requires import path updates.",
-                ))
+                explanations.append(
+                    BreakingChange(
+                        description=f"Symbol moved from '{r.get('source_module')}' to '{r.get('target_module')}'",
+                        severity="medium",
+                        migration_strategy=f"Update import statements from '{r.get('source_module')}' to '{r.get('target_module')}'",
+                        ai_explanation="Module relocation requires import path updates.",
+                    )
+                )
             elif ct == "rename_attribute":
-                explanations.append(BreakingChange(
-                    description=f"Attribute '{old_name}' renamed to '{new_name}'",
-                    severity="medium",
-                    migration_strategy=f"Replace all '.{old_name}' accesses with '.{new_name}'",
-                    ai_explanation="Attribute renaming affects all dot-access patterns.",
-                ))
+                explanations.append(
+                    BreakingChange(
+                        description=f"Attribute '{old_name}' renamed to '{new_name}'",
+                        severity="medium",
+                        migration_strategy=f"Replace all '.{old_name}' accesses with '.{new_name}'",
+                        ai_explanation="Attribute renaming affects all dot-access patterns.",
+                    )
+                )
 
         return explanations
 
@@ -357,15 +379,17 @@ For each breaking change, provide:
         try:
             data = json.loads(text)
             for r in data.get("rules", data.get("suggestions", [])):
-                suggestions.append(MigrationSuggestion(
-                    rule_id=r.get("id", "UNKNOWN"),
-                    change_type=r.get("change_type", "unknown"),
-                    description=r.get("description", ""),
-                    confidence=SuggestionConfidence(r.get("confidence", "medium")),
-                    reasoning=r.get("reasoning", "Generated suggestion"),
-                    code_snippet=r.get("code_snippet"),
-                    suggested_fix=r.get("suggested_fix"),
-                ))
+                suggestions.append(
+                    MigrationSuggestion(
+                        rule_id=r.get("id", "UNKNOWN"),
+                        change_type=r.get("change_type", "unknown"),
+                        description=r.get("description", ""),
+                        confidence=SuggestionConfidence(r.get("confidence", "medium")),
+                        reasoning=r.get("reasoning", "Generated suggestion"),
+                        code_snippet=r.get("code_snippet"),
+                        suggested_fix=r.get("suggested_fix"),
+                    )
+                )
         except json.JSONDecodeError:
             pass
         return suggestions
@@ -381,12 +405,14 @@ For each breaking change, provide:
         changes = []
         for line in text.splitlines():
             if ":" in line:
-                changes.append(BreakingChange(
-                    description=line.strip(),
-                    severity="medium",
-                    migration_strategy="See full explanation above",
-                    ai_explanation=text,
-                ))
+                changes.append(
+                    BreakingChange(
+                        description=line.strip(),
+                        severity="medium",
+                        migration_strategy="See full explanation above",
+                        ai_explanation=text,
+                    )
+                )
         return changes if changes else []
 
 

@@ -1,10 +1,12 @@
 """
 Using LibCST-based transformers directly for fine-grained control.
 """
+
 import libcst as cst
-from migrator_gen.core.changelog_parser import MigrationRule, ChangeType
-from migrator_gen.core.transformers import get_transformer
+
+from migrator_gen.core.changelog_parser import ChangeType, MigrationRule
 from migrator_gen.core.migration_engine import TransactionalMigrationEngine
+from migrator_gen.core.transformers import get_transformer
 
 # --- Direct transformer usage ---
 code = """
@@ -30,9 +32,9 @@ print(modified_tree.code)
 
 # --- Using the migration engine with advanced features ---
 engine = TransactionalMigrationEngine(
-    transactional=True,        # roll back on error
+    transactional=True,  # roll back on error
     interactive_approval=False,  # auto-approve
-    idempotency_check=True,     # skip unchanged files
+    idempotency_check=True,  # skip unchanged files
 )
 
 code = """

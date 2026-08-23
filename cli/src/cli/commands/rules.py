@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from migrator_gen import MigrationFile
+from migrator_gen import Rule
 
 from ..cli.context import CLIContext
 from ..cli.output import OutputFormatter
@@ -52,7 +52,7 @@ def cmd_validate_rules(ctx: CLIContext, out: OutputFormatter) -> None:
     client = ctx.client
 
     out.info(f"Validating {path} ...")
-    mf = client.parse_changelog(str(path))
+    client.parse_changelog(str(path))
     report = client.validate_rules(str(path))
 
     if ctx.json_mode:
@@ -93,8 +93,14 @@ def cmd_diff_rules(ctx: CLIContext, out: OutputFormatter) -> None:
         o, n = old_rules[rid], new_rules[rid]
         changes = []
         for field in [
-            "old_name", "new_name", "function_name", "argument_name",
-            "old_module", "new_module", "safety", "priority",
+            "old_name",
+            "new_name",
+            "function_name",
+            "argument_name",
+            "old_module",
+            "new_module",
+            "safety",
+            "priority",
         ]:
             ov = getattr(o, field, None)
             nv = getattr(n, field, None)
@@ -104,11 +110,13 @@ def cmd_diff_rules(ctx: CLIContext, out: OutputFormatter) -> None:
             modified.append((rid, changes))
 
     if ctx.json_mode:
-        out.print_json({
-            "added": list(added),
-            "removed": list(removed),
-            "modified": [{"id": rid, "changes": ch} for rid, ch in modified],
-        })
+        out.print_json(
+            {
+                "added": list(added),
+                "removed": list(removed),
+                "modified": [{"id": rid, "changes": ch} for rid, ch in modified],
+            }
+        )
         return
 
     if added:
@@ -131,6 +139,6 @@ def cmd_diff_rules(ctx: CLIContext, out: OutputFormatter) -> None:
         out.info("No differences found.")
 
 
-def _rules_by_id(ctx: CLIContext, path: Path) -> dict[str, "Rule"]:
+def _rules_by_id(ctx: CLIContext, path: Path) -> dict[str, Rule]:
     mf = ctx.client.parse_changelog(str(path))
     return {r.id: r for v in mf.versions for r in v.rules}

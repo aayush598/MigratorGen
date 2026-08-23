@@ -36,7 +36,13 @@ class TestRuleValidation:
         assert "old_name" not in rule.to_dict()
 
     def test_from_dict_roundtrip(self):
-        original = Rule(id="R1", change_type=ChangeType.RENAME_FUNCTION, description="test", old_name="foo", new_name="bar")
+        original = Rule(
+            id="R1",
+            change_type=ChangeType.RENAME_FUNCTION,
+            description="test",
+            old_name="foo",
+            new_name="bar",
+        )
         restored = Rule.from_dict(original.to_dict())
         assert restored.id == original.id
         assert restored.old_name == "foo"
@@ -85,7 +91,12 @@ class TestMigrateResponse:
         assert resp.was_modified is False
 
     def test_with_values(self):
-        resp = MigrateResponse(original_code="foo()", transformed_code="bar()", was_modified=True, average_confidence=0.95)
+        resp = MigrateResponse(
+            original_code="foo()",
+            transformed_code="bar()",
+            was_modified=True,
+            average_confidence=0.95,
+        )
         assert resp.transformed_code == "bar()"
 
 
@@ -94,7 +105,9 @@ class TestDiffPreview:
         assert DiffPreview().diff == ""
 
     def test_with_diff(self):
-        dp = DiffPreview(original_code="a", transformed_code="b", diff="--- a\n+++ b\n", change_count=1)
+        dp = DiffPreview(
+            original_code="a", transformed_code="b", diff="--- a\n+++ b\n", change_count=1
+        )
         assert dp.change_count == 1
 
 

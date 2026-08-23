@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from ..cli.context import CLIContext
@@ -24,7 +23,7 @@ def cmd_migrate(ctx: CLIContext, out: OutputFormatter) -> None:
     out.info(f"Loading rules from {rules_path} ...")
     versions = client.parse_changelog(str(rules_path)).versions
     from_version = getattr(args, "from_version", None)
-    to_version = getattr(args, "to_version", None)
+    getattr(args, "to_version", None)
     if from_version and from_version != "latest":
         versions = [v for v in versions if v.version >= from_version]
     rules = [r for v in versions for r in v.rules]
@@ -37,14 +36,18 @@ def cmd_migrate(ctx: CLIContext, out: OutputFormatter) -> None:
             try:
                 code = f.read_text(encoding="utf-8")
                 res = client.migrate_code(code, rules)
-                results.append({
-                    "file": str(f),
-                    "modified": res.was_modified,
-                    "changes": res.changes,
-                    "errors": res.errors,
-                })
+                results.append(
+                    {
+                        "file": str(f),
+                        "modified": res.was_modified,
+                        "changes": res.changes,
+                        "errors": res.errors,
+                    }
+                )
             except Exception as exc:
-                results.append({"file": str(f), "modified": False, "changes": [], "errors": [str(exc)]})
+                results.append(
+                    {"file": str(f), "modified": False, "changes": [], "errors": [str(exc)]}
+                )
         out.print_json({"files": results, "dry_run": args.dry_run})
         return
 

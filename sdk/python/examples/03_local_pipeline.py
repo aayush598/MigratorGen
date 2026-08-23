@@ -4,10 +4,11 @@ Complete local pipeline:
 
 Uses the core engine directly without the client wrapper.
 """
+
 from migrator_gen.core.changelog_parser import ChangelogParser
-from migrator_gen.core.version_resolver import VersionResolver
 from migrator_gen.core.migration_engine import TransactionalMigrationEngine
 from migrator_gen.core.validation import RuleValidator
+from migrator_gen.core.version_resolver import VersionResolver
 
 changelog_json = """
 {

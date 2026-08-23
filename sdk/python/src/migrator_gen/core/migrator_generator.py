@@ -69,9 +69,13 @@ python -m {package_name} migrate --from 3.0.0 --to 1.0.0 ./my_project/
 """
 
 
-def _build_main_module(package_name: str, library_name: str,
-                       migration_data: dict, version_range: str,
-                       generated_date: str) -> str:
+def _build_main_module(
+    package_name: str,
+    library_name: str,
+    migration_data: dict,
+    version_range: str,
+    generated_date: str,
+) -> str:
     """Build the __main__.py source code as a string (no .format() on code)."""
 
     # Serialize migration data once
@@ -120,7 +124,9 @@ def _build_main_module(package_name: str, library_name: str,
     w("            req = ['id', 'change_type', 'version_introduced', 'description']")
     w("            missing = [k for k in req if k not in r]")
     w("            if missing:")
-    w("                print('INVALID rule in ' + v + ' (' + r.get('id', 'unknown') + '): missing ' + ', '.join(missing))")
+    w(
+        "                print('INVALID rule in ' + v + ' (' + r.get('id', 'unknown') + '): missing ' + ', '.join(missing))"
+    )
     w("                sys.exit(1)")
     w("_validate_rules()")
     nl()
@@ -231,7 +237,9 @@ def _build_main_module(package_name: str, library_name: str,
     w("        args = list(u.args)")
     w("        if args: args[-1] = args[-1].with_changes(comma=cst.MaybeSentinel.DEFAULT)")
     w("        args.append(na)")
-    w("        self.rec('Added ' + self.r['argument_name'] + '=' + dv + ' to ' + self.r['function_name'] + '()')")
+    w(
+        "        self.rec('Added ' + self.r['argument_name'] + '=' + dv + ' to ' + self.r['function_name'] + '()')"
+    )
     w("        return u.with_changes(args=args)")
     nl()
     nl()
@@ -239,10 +247,14 @@ def _build_main_module(package_name: str, library_name: str,
     w("class RemA(B):")
     w("    def leave_Call(self, o, u):")
     w("        if _cn(u.func) != self.r.get('function_name'): return u")
-    w("        na = [a for a in u.args if not (a.keyword and a.keyword.value == self.r.get('argument_name'))]")
+    w(
+        "        na = [a for a in u.args if not (a.keyword and a.keyword.value == self.r.get('argument_name'))]"
+    )
     w("        if len(na) < len(u.args):")
     w("            if na: na[-1] = na[-1].with_changes(comma=cst.MaybeSentinel.DEFAULT)")
-    w("            self.rec('Removed ' + self.r['argument_name'] + ' from ' + self.r['function_name'] + '()')")
+    w(
+        "            self.rec('Removed ' + self.r['argument_name'] + ' from ' + self.r['function_name'] + '()')"
+    )
     w("            return u.with_changes(args=na)")
     w("        return u")
     nl()
@@ -287,7 +299,9 @@ def _build_main_module(package_name: str, library_name: str,
     w("    def leave_FunctionDef(self, o, u):")
     w("        if u.name.value != self.r.get('function_name'): return u")
     w("        dn = self.r.get('decorator_name')")
-    w("        nd = [d for d in u.decorators if not (isinstance(d.decorator, cst.Name) and d.decorator.value == dn)]")
+    w(
+        "        nd = [d for d in u.decorators if not (isinstance(d.decorator, cst.Name) and d.decorator.value == dn)]"
+    )
     w("        if len(nd) < len(u.decorators):")
     w("            self.rec('Removed @' + dn + ' from ' + self.r['function_name'])")
     w("            return u.with_changes(decorators=nd)")
@@ -302,7 +316,9 @@ def _build_main_module(package_name: str, library_name: str,
     w("                fn = _cn(s.value.func)")
     w("                if fn == self.r.get('old_name'):")
     w("                    repl = self.r.get('replacement','N/A')")
-    w("                    c = cst.EmptyLine(comment=cst.Comment('# DEPRECATED: ' + fn + '() use ' + repl))")
+    w(
+        "                    c = cst.EmptyLine(comment=cst.Comment('# DEPRECATED: ' + fn + '() use ' + repl))"
+    )
     w("                    self.rec('Marked ' + fn + '() as deprecated')")
     w("                    return u.with_changes(leading_lines=[*u.leading_lines, c])")
     w("        return u")
@@ -444,14 +460,18 @@ def _build_main_module(package_name: str, library_name: str,
     w("                    print('\\n=== ' + str(f) + ' ===')")
     w("                    print(diff)")
     w("            else:")
-    w("                mod, ch = migrate_file(f, rules, dry_run=args.dry_run, backup=not args.no_backup)")
+    w(
+        "                mod, ch = migrate_file(f, rules, dry_run=args.dry_run, backup=not args.no_backup)"
+    )
     w("                if mod or ch:")
     w("                    print('\\n  ' + str(f) + ':')")
     w("                    for c in ch: print('    + ' + c)")
     w("                    mc += 1")
     w("        tag = '[DRY RUN] ' if args.dry_run else ''")
     w("        verb = 'would be modified' if args.dry_run else 'modified'")
-    w("        print('\\n' + tag + 'Done: ' + str(mc) + '/' + str(len(files)) + ' file(s) ' + verb + '.')")
+    w(
+        "        print('\\n' + tag + 'Done: ' + str(mc) + '/' + str(len(files)) + ' file(s) ' + verb + '.')"
+    )
     w("        return")
     nl()
     w("    p.print_help()")
@@ -520,9 +540,7 @@ class MigratorGenerator:
         )
 
         # Write README.md
-        version_list = "\n".join(
-            f"- **v{v}** — {len(migration_data[v])} rule(s)" for v in versions
-        )
+        version_list = "\n".join(f"- **v{v}** — {len(migration_data[v])} rule(s)" for v in versions)
         (output_dir / "README.md").write_text(
             README_TEMPLATE.format(
                 package_name=self.package_name,

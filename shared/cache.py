@@ -7,17 +7,18 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Callable, Dict, List, Optional, Union
-from urllib.parse import urlparse
+from typing import Any, Callable
 
 try:
     import redis.asyncio as redis
     from redis.asyncio import Redis
+
     REDIS_AVAILABLE = True
 except ImportError:
     try:
         import redis
-        from redis import Redis
+        from redis import Redis  # noqa: F401
+
         REDIS_AVAILABLE = True
     except ImportError:
         REDIS_AVAILABLE = False
@@ -46,7 +47,7 @@ class CacheManager:
         self.default_ttl = default_ttl
         self.json_serialize = json_serialize
         self.prefix = prefix
-        self._client: Optional[Any] = None
+        self._client: Any | None = None
 
     @property
     def client(self) -> Any:
@@ -66,7 +67,7 @@ class CacheManager:
         """Build a prefixed cache key from parts."""
         return self.prefix + ":" + ":".join(str(p) for p in parts)
 
-    async def get(self, key: str) -> Optional[Any]:
+    async def get(self, key: str) -> Any | None:
         """
         Get a value from cache.
 
@@ -91,7 +92,7 @@ class CacheManager:
         self,
         key: str,
         value: Any,
-        ttl: Optional[int] = None,
+        ttl: int | None = None,
     ) -> bool:
         """
         Set a value in cache.
@@ -131,7 +132,7 @@ class CacheManager:
             logger.warning("cache_exists_error", key=key, error=str(e))
             return False
 
-    async def get_many(self, keys: List[str]) -> Dict[str, Any]:
+    async def get_many(self, keys: list[str]) -> dict[str, Any]:
         """Get multiple keys at once."""
         if not keys:
             return {}
@@ -151,8 +152,8 @@ class CacheManager:
 
     async def set_many(
         self,
-        mapping: Dict[str, Any],
-        ttl: Optional[int] = None,
+        mapping: dict[str, Any],
+        ttl: int | None = None,
     ) -> bool:
         """Set multiple keys at once using pipeline."""
         if not mapping:
@@ -170,7 +171,7 @@ class CacheManager:
             logger.warning("cache_set_many_error", error=str(e))
             return False
 
-    async def increment(self, key: str, amount: int = 1) -> Optional[int]:
+    async def increment(self, key: str, amount: int = 1) -> int | None:
         """Increment a counter."""
         try:
             return await self.client.incrby(key, amount)
@@ -182,7 +183,7 @@ class CacheManager:
         self,
         key: str,
         factory: Callable[[], Any],
-        ttl: Optional[int] = None,
+        ttl: int | None = None,
     ) -> Any:
         """
         Get from cache or compute and cache.
@@ -224,7 +225,7 @@ class CacheManager:
             logger.warning("cache_clear_pattern_error", pattern=pattern, error=str(e))
             return 0
 
-    async def get_json(self, key: str) -> Optional[Dict[str, Any]]:
+    async def get_json(self, key: str) -> dict[str, Any] | None:
         """Get JSON value, returning None on parse error."""
         try:
             value = await self.client.get(key)
@@ -237,8 +238,8 @@ class CacheManager:
     async def set_json(
         self,
         key: str,
-        value: Dict[str, Any],
-        ttl: Optional[int] = None,
+        value: dict[str, Any],
+        ttl: int | None = None,
     ) -> bool:
         """Set JSON value."""
         return await self.set(key, value, ttl)
@@ -246,13 +247,13 @@ class CacheManager:
     async def cache_migration_result(
         self,
         key: str,
-        result: Dict[str, Any],
+        result: dict[str, Any],
         ttl: int = 300,
     ) -> bool:
         """Cache a migration result with a 5-minute TTL."""
         return await self.set(f"migration:result:{key}", result, ttl)
 
-    async def get_migration_result(self, key: str) -> Optional[Dict[str, Any]]:
+    async def get_migration_result(self, key: str) -> dict[str, Any] | None:
         """Get a cached migration result."""
         return await self.get(f"migration:result:{key}")
 
@@ -280,19 +281,18 @@ class CacheManager:
 
 
 # Global cache instance (lazy-initialized)
-_cache: Optional[CacheManager] = None
+_cache: CacheManager | None = None
 
 
 def get_cache(
-    redis_url: Optional[str] = None,
+    redis_url: str | None = None,
     default_ttl: int = 3600,
 ) -> CacheManager:
     """Get or create the global cache instance."""
     global _cache
     if _cache is None:
         import os
-        url = redis_url or os.environ.get(
-            "REDIS_URL", "redis://localhost:6379/0"
-        )
+
+        url = redis_url or os.environ.get("REDIS_URL", "redis://localhost:6379/0")
         _cache = CacheManager(url, default_ttl)
     return _cache

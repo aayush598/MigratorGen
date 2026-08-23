@@ -6,17 +6,14 @@ for the full-featured API with all endpoints.
 
 from __future__ import annotations
 
-import json
 import os
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-
 from migrator_gen import MigrationClient, Rule
+from pydantic import BaseModel
 
 app = FastAPI(
     title="MigratorGen API",
@@ -37,7 +34,7 @@ _client = MigrationClient(mode="local")
 
 class MigrateCodeRequest(BaseModel):
     source_code: str
-    rules: List[Dict[str, Any]]
+    rules: list[dict[str, Any]]
     source_version: str = "1.0.0"
     target_version: str = "latest"
     dry_run: bool = False
@@ -69,7 +66,8 @@ async def migrate_code(req: MigrateCodeRequest):
     try:
         rules = [Rule.from_dict(r) for r in req.rules]
         result = _client.migrate_code(
-            req.source_code, rules,
+            req.source_code,
+            rules,
             source_version=req.source_version,
             target_version=req.target_version,
             dry_run=req.dry_run,
@@ -109,5 +107,6 @@ async def list_libraries():
 
 if __name__ == "__main__":
     import uvicorn
+
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port, workers=4)

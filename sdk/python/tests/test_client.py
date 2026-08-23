@@ -1,4 +1,3 @@
-
 from migrator_gen import SDKConfig, SyncMigrationClient
 
 

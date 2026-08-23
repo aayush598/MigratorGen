@@ -12,11 +12,12 @@ log = logging.getLogger("migrator-gen.mcp.stdio")
 
 def run_stdio_server() -> None:
     from ..server.app import MigratorGenMCPServer
+
     """Run the MCP server over stdio transport."""
     try:
         from mcp.server import Server
         from mcp.server.stdio import stdio_server
-        from mcp.types import Tool, TextContent
+        from mcp.types import TextContent, Tool
     except ImportError:
         print("[ERROR] MCP library not installed. Install: pip install mcp", file=sys.stderr)
         sys.exit(1)

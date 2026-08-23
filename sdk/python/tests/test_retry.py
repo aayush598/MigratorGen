@@ -28,11 +28,13 @@ class TestRetryStrategy:
     def test_retries_then_succeeds(self):
         strategy = RetryStrategy(max_retries=3, base_delay=0.01)
         call_count = [0]
+
         def fn():
             call_count[0] += 1
             if call_count[0] < 3:
                 raise TimeoutError("transient")
             return "recovered"
+
         assert strategy.execute(fn) == "recovered"
         assert call_count[0] == 3
 
@@ -44,11 +46,13 @@ class TestRetryStrategy:
     def test_decorate(self):
         strategy = RetryStrategy(max_retries=2, base_delay=0.01)
         call_count = [0]
+
         @strategy.decorate
         def fn():
             call_count[0] += 1
             if call_count[0] < 2:
                 raise TimeoutError("transient")
             return "ok"
+
         assert fn() == "ok"
         assert call_count[0] == 2

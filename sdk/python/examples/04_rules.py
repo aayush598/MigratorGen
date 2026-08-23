@@ -1,9 +1,13 @@
 """
 Creating, serialising, and inspecting Rule objects.
 """
+
 from migrator_gen import (
-    Rule, ChangeType, SafetyLevel, EngineMode,
+    ChangeType,
+    EngineMode,
+    Rule,
     RuleWhenCondition,
+    SafetyLevel,
 )
 
 # --- Create rules ---

@@ -20,21 +20,20 @@ from pathlib import Path
 
 EXAMPLES_DIR = Path(__file__).resolve().parent
 
-from migrator_gen.core.changelog_parser import ChangelogParser, MigrationRule, ChangeType
-from migrator_gen.core.version_resolver import VersionResolver
+from migrator_gen.core.changelog_parser import ChangelogParser, ChangeType, MigrationRule
+from migrator_gen.core.diff_analyzer import generate_from_changelog, generate_from_git_diff
+from migrator_gen.core.llm_engine import LLMSuggestionEngine
 from migrator_gen.core.migration_engine import TransactionalMigrationEngine
 from migrator_gen.core.migrator_generator import MigratorGenerator
-from migrator_gen.core.validation import RuleValidator, RuleDependencyGraph, IdempotencyChecker
-from migrator_gen.core.diff_analyzer import generate_from_changelog, generate_from_git_diff
-from migrator_gen.core.symbol_resolver import SymbolResolver, ImportGraph, ConfidenceScorer
-from migrator_gen.core.llm_engine import LLMSuggestionEngine, suggest_migrations
-from migrator_gen.core.parallel_engine import ParallelMigrationEngine
+from migrator_gen.core.symbol_resolver import SymbolResolver
+from migrator_gen.core.validation import IdempotencyChecker, RuleDependencyGraph, RuleValidator
+from migrator_gen.core.version_resolver import VersionResolver
 
 
 def banner(msg: str) -> None:
     print(f"\n{'=' * 60}")
     print(f" {msg}")
-    print('=' * 60)
+    print("=" * 60)
 
 
 def demo_parse_changelog() -> None:
@@ -65,7 +64,7 @@ def demo_resolve_path() -> None:
     print(f"  Direction: {'upgrade' if path.is_upgrade else 'downgrade'}")
     print(f"  Steps: {len(path.steps)}")
     print(f"  Rules: {len(path.rules)}")
-    print(f"\nSteps:")
+    print("\nSteps:")
     for step in path.steps:
         print(f"  v{step[0]} -> v{step[1]}")
 
@@ -86,12 +85,12 @@ def demo_apply_migration() -> None:
 
     result = engine.migrate_code(code, path.rules, dry_run=False)
 
-    print(f"Migration result:")
+    print("Migration result:")
     print(f"  Was modified: {result.was_modified}")
     print(f"  Changes: {len(result.changes)}")
     print(f"  Avg confidence: {result.average_confidence:.0%}")
     print(f"  Rules applied: {len(result.rule_results)}")
-    print(f"\nChanges made:")
+    print("\nChanges made:")
     for c in result.changes[:5]:
         print(f"  + {c}")
 
@@ -250,7 +249,7 @@ result = utils.process(client)
     resolver = SymbolResolver(code)
     ig = resolver._import_graph
 
-    print(f"Import graph:")
+    print("Import graph:")
     print(f"  Modules: {list(ig.imports.keys())}")
     print(f"  Aliases: {ig.alias_map}")
 
@@ -261,8 +260,10 @@ result = utils.process(client)
             if isinstance(stmt, cst.Expr) and isinstance(stmt.value, cst.Call):
                 func = stmt.value.func
                 if isinstance(func, cst.Name):
-                    sym = resolver.resolve_symbol(func)
-                    print(f"  Symbol '{func.value}': resolved to import source '{ig.get_module_for_symbol(func.value)}'")
+                    resolver.resolve_symbol(func)
+                    print(
+                        f"  Symbol '{func.value}': resolved to import source '{ig.get_module_for_symbol(func.value)}'"
+                    )
 
 
 def demo_idempotency() -> None:
@@ -458,9 +459,10 @@ def main() -> None:
 
     print(f"\n{'=' * 60}")
     print(" Demo complete! All features working.")
-    print('=' * 60)
+    print("=" * 60)
 
 
 if __name__ == "__main__":
     import libcst as cst
+
     main()

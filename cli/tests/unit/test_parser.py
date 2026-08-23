@@ -20,9 +20,15 @@ class TestBuildParser:
 
     def test_create_command(self):
         parser = build_parser()
-        args = parser.parse_args([
-            "create", "--changelog", "changelog.json", "--library", "mylib",
-        ])
+        args = parser.parse_args(
+            [
+                "create",
+                "--changelog",
+                "changelog.json",
+                "--library",
+                "mylib",
+            ]
+        )
         assert args.command == "create"
         assert args.changelog == "changelog.json"
         assert args.library == "mylib"
@@ -36,16 +42,27 @@ class TestBuildParser:
 
     def test_migrate_with_dry_run(self):
         parser = build_parser()
-        args = parser.parse_args([
-            "migrate", "file.py", "--rules", "r.json", "--dry-run",
-        ])
+        args = parser.parse_args(
+            [
+                "migrate",
+                "file.py",
+                "--rules",
+                "r.json",
+                "--dry-run",
+            ]
+        )
         assert args.dry_run is True
 
     def test_preview_command(self):
         parser = build_parser()
-        args = parser.parse_args([
-            "preview", "file.py", "--rules", "rules.json",
-        ])
+        args = parser.parse_args(
+            [
+                "preview",
+                "file.py",
+                "--rules",
+                "rules.json",
+            ]
+        )
         assert args.command == "preview"
 
     def test_interactive_command(self):
@@ -62,16 +79,27 @@ class TestBuildParser:
 
     def test_diff_rules_command(self):
         parser = build_parser()
-        args = parser.parse_args([
-            "diff-rules", "--old", "a.json", "--new", "b.json",
-        ])
+        args = parser.parse_args(
+            [
+                "diff-rules",
+                "--old",
+                "a.json",
+                "--new",
+                "b.json",
+            ]
+        )
         assert args.command == "diff-rules"
 
     def test_audit_command(self):
         parser = build_parser()
-        args = parser.parse_args([
-            "audit", "project/", "--rules", "rules.json",
-        ])
+        args = parser.parse_args(
+            [
+                "audit",
+                "project/",
+                "--rules",
+                "rules.json",
+            ]
+        )
         assert args.command == "audit"
 
     def test_auto_upgrade_command(self):
@@ -81,16 +109,26 @@ class TestBuildParser:
 
     def test_export_schema_command(self):
         parser = build_parser()
-        args = parser.parse_args([
-            "export-schema", "--output", "schema.json",
-        ])
+        args = parser.parse_args(
+            [
+                "export-schema",
+                "--output",
+                "schema.json",
+            ]
+        )
         assert args.command == "export-schema"
 
     def test_config_flag(self):
         parser = build_parser()
-        args = parser.parse_args([
-            "rules", "--rules", "x.json", "--config", "config.toml",
-        ])
+        args = parser.parse_args(
+            [
+                "rules",
+                "--rules",
+                "x.json",
+                "--config",
+                "config.toml",
+            ]
+        )
         assert args.config == "config.toml"
 
     def test_run_alias(self):
@@ -100,9 +138,15 @@ class TestBuildParser:
 
     def test_create_default_output(self):
         parser = build_parser()
-        args = parser.parse_args([
-            "create", "--changelog", "c.json", "--library", "l",
-        ])
+        args = parser.parse_args(
+            [
+                "create",
+                "--changelog",
+                "c.json",
+                "--library",
+                "l",
+            ]
+        )
         assert args.output == "./generated_migrator"
 
     def test_export_schema_default_output(self):
@@ -112,6 +156,7 @@ class TestBuildParser:
 
     def test_invalid_command(self):
         import pytest
+
         parser = build_parser()
         with pytest.raises(SystemExit):
             parser.parse_args(["invalid"])

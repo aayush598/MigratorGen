@@ -149,7 +149,7 @@ class SymbolResolver:
             fqname_map = provider_cache[FullyQualifiedNameProvider]
 
             for node, scope in scope_map.items():
-                qualname = qualname_map.get(node)
+                qualname_map.get(node)
                 fqname = fqname_map.get(node)
                 if isinstance(node, cst.FunctionDef):
                     name = node.name.value
@@ -233,9 +233,7 @@ class SymbolResolver:
 
         return None
 
-    def resolve_to_definition(
-        self, node: cst.CSTNode
-    ) -> tuple[cst.CSTNode, Symbol] | None:
+    def resolve_to_definition(self, node: cst.CSTNode) -> tuple[cst.CSTNode, Symbol] | None:
         """Find the definition site for a given node."""
         if not isinstance(node, cst.Name):
             return None
@@ -254,7 +252,7 @@ class SymbolResolver:
         try:
             provider_cache = self._wrapper.resolve_many(ScopeProvider)
             scope_map = provider_cache[ScopeProvider]
-            for node, scope in scope_map.items():
+            for node, _scope in scope_map.items():
                 if isinstance(node, (cst.FunctionDef, cst.AsyncFunctionDef, cst.ClassDef)):
                     name = node.name.value
                     if name in self._symbol_index:
@@ -310,9 +308,7 @@ class ScopeAwareTransformer(cst.CSTTransformer):
         if self._import_graph.get_actual_symbol(name):
             actual = self._import_graph.get_actual_symbol(name)
             if expected_source:
-                return (
-                    self._import_graph.get_module_for_symbol(actual) == expected_source
-                )
+                return self._import_graph.get_module_for_symbol(actual) == expected_source
             return True
 
         if self._resolver:
@@ -335,7 +331,11 @@ class ScopeAwareTransformer(cst.CSTTransformer):
             if isinstance(base, cst.Attribute):
                 return self._dotted_name_from_node(base)
         elif isinstance(func, cst.Name):
-            return self._resolver._import_graph.get_module_for_symbol(func.value) if self._resolver else None
+            return (
+                self._resolver._import_graph.get_module_for_symbol(func.value)
+                if self._resolver
+                else None
+            )
         return None
 
     def _dotted_name_from_node(self, node) -> str:

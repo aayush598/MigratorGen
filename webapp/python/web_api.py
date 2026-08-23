@@ -78,7 +78,9 @@ def _to_core_rule(raw: dict, default_version: str = "1.0.0", index: int = 0) -> 
         cleaned["id"] = f"{prefix}-{index + 1:03d}"
         if not raw.get("id"):
             cleaned["id"] = f"RULE-{index + 1:03d}"
-    if not cleaned.get("version_introduced") or not re.match(r"^\d+\.\d+\.\d+$", str(cleaned["version_introduced"])):
+    if not cleaned.get("version_introduced") or not re.match(
+        r"^\d+\.\d+\.\d+$", str(cleaned["version_introduced"])
+    ):
         cleaned["version_introduced"] = default_version
     return MigrationRule(**cleaned)
 
@@ -147,7 +149,11 @@ def migrate(source_code: str, rules_json: str, target_version: str = "latest") -
         "changes": [str(c) for c in changes],
         "change_count": len(changes),
         "rules_applied": applied,
-        "average_confidence": round(sum(r["confidence"] for r in rule_results if r["rule_id"] in applied) / len(applied), 2) if applied else 0.0,
+        "average_confidence": round(
+            sum(r["confidence"] for r in rule_results if r["rule_id"] in applied) / len(applied), 2
+        )
+        if applied
+        else 0.0,
         "was_modified": len(changes) > 0 and transformed != source_code,
         "errors": [str(e) for e in errors],
         "rule_results": rule_results,
@@ -175,7 +181,13 @@ def validate(rules_content_json: str) -> str:
         out = []
         for msg in data.get(key, []) or []:
             if isinstance(msg, dict):
-                out.append({"rule_id": msg.get("rule_id", ""), "message": msg.get("message", ""), "severity": severity})
+                out.append(
+                    {
+                        "rule_id": msg.get("rule_id", ""),
+                        "message": msg.get("message", ""),
+                        "severity": severity,
+                    }
+                )
             else:
                 out.append({"rule_id": "", "message": str(msg), "severity": severity})
         return out
@@ -183,15 +195,17 @@ def validate(rules_content_json: str) -> str:
     errors = _items("errors", "error")
     warnings = _items("warnings", "warning")
     info = _items("info", "info")
-    return json.dumps({
-        "valid": data.get("valid", len(errors) == 0),
-        "error_count": len(errors),
-        "warning_count": len(warnings),
-        "info_count": len(info),
-        "errors": errors,
-        "warnings": warnings,
-        "info": info,
-    })
+    return json.dumps(
+        {
+            "valid": data.get("valid", len(errors) == 0),
+            "error_count": len(errors),
+            "warning_count": len(warnings),
+            "info_count": len(info),
+            "errors": errors,
+            "warnings": warnings,
+            "info": info,
+        }
+    )
 
 
 def resolve_path(source_version: str, target_version: str, changelog_json: str) -> str:
@@ -210,15 +224,15 @@ def resolve_path(source_version: str, target_version: str, changelog_json: str) 
         )
     resolver = VersionResolver(changelogs=changelogs)
     path = resolver.resolve_path(source_version, target_version)
-    return json.dumps({
-        "source_version": path.source_version,
-        "target_version": path.target_version,
-        "is_upgrade": bool(path.is_upgrade),
-        "steps": [
-            {"source": s[0], "target": s[1], "rule_count": 0} for s in path.steps
-        ],
-        "rule_count": len(path.rules),
-    })
+    return json.dumps(
+        {
+            "source_version": path.source_version,
+            "target_version": path.target_version,
+            "is_upgrade": bool(path.is_upgrade),
+            "steps": [{"source": s[0], "target": s[1], "rule_count": 0} for s in path.steps],
+            "rule_count": len(path.rules),
+        }
+    )
 
 
 def health() -> str:

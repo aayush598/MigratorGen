@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import os
-from pathlib import Path
 from typing import Any
 
 from migrator_gen import SyncMigrationClient

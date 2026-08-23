@@ -64,7 +64,9 @@ class SDKConfig:
     log_format: str = field(default_factory=lambda: _env("LOG_FORMAT", "pretty"))
     enable_metrics: bool = field(default_factory=lambda: _env_bool("ENABLE_METRICS", False))
     enable_cache: bool = field(default_factory=lambda: _env_bool("ENABLE_CACHE", False))
-    request_id: str | None = field(default_factory=lambda: os.getenv(f"{_ENV_PREFIX}REQUEST_ID") or None)
+    request_id: str | None = field(
+        default_factory=lambda: os.getenv(f"{_ENV_PREFIX}REQUEST_ID") or None
+    )
 
     @classmethod
     def build(

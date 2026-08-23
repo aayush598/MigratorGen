@@ -7,7 +7,9 @@ from migrator_gen.services.remote_service import SyncRemoteService
 
 class TestSyncRemoteService:
     def _make_client(self) -> SyncRemoteService:
-        return SyncRemoteService(SDKConfig.build(mode="remote", base_url="http://test:8000", max_retries=1))
+        return SyncRemoteService(
+            SDKConfig.build(mode="remote", base_url="http://test:8000", max_retries=1)
+        )
 
     def test_init(self):
         client = self._make_client()
@@ -22,7 +24,15 @@ class TestSyncRemoteService:
 
     def test_migrate_code_payload(self):
         client = self._make_client()
-        rules = [Rule(id="R1", change_type=ChangeType.RENAME_FUNCTION, description="test", old_name="foo", new_name="bar")]
+        rules = [
+            Rule(
+                id="R1",
+                change_type=ChangeType.RENAME_FUNCTION,
+                description="test",
+                old_name="foo",
+                new_name="bar",
+            )
+        ]
         with pytest.raises(Exception):
             client.migrate_code("def foo(): pass", rules)
         client.close()

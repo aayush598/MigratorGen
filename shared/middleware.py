@@ -6,13 +6,14 @@ Includes: Request logging, Rate limiting, CORS, Error handling, Metrics, Tenant,
 import logging
 import time
 import uuid
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Optional
 
 try:
     from starlette.middleware.base import BaseHTTPMiddleware
     from starlette.requests import Request
     from starlette.responses import JSONResponse, Response
     from starlette.types import ASGIApp
+
     STARLETTE_AVAILABLE = True
 except ImportError:
     BaseHTTPMiddleware = object
@@ -21,13 +22,14 @@ except ImportError:
 
 try:
     from slowapi import Limiter
+    from slowapi.middleware import SlowAPIMiddleware  # noqa: F401
     from slowapi.util import get_remote_address
-    from slowapi.middleware import SlowAPIMiddleware
+
     SLOWAPI_AVAILABLE = True
 except ImportError:
     SLOWAPI_AVAILABLE = False
 
-from .exceptions import global_exception_handler, MigratorBaseException
+from .exceptions import global_exception_handler
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +62,9 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware if STARLETTE_AVAILABLE else ob
             duration_ms = (time.perf_counter() - start) * 1000
             logger.error(
                 "request_failed %s %s %.2fms",
-                method, path, duration_ms,
+                method,
+                path,
+                duration_ms,
             )
             raise
 
@@ -68,7 +72,10 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware if STARLETTE_AVAILABLE else ob
         status = response.status_code
         logger.info(
             "request_completed %s %s %d %.2fms",
-            method, path, status, duration_ms,
+            method,
+            path,
+            status,
+            duration_ms,
         )
         return response
 
@@ -115,7 +122,9 @@ class AuthenticationMiddleware(BaseHTTPMiddleware if STARLETTE_AVAILABLE else ob
 
     EXEMPT_PATHS = {"/health", "/docs", "/redoc", "/openapi.json", "/metrics"}
 
-    def __init__(self, app: ASGIApp, service_key: Optional[str] = None, jwt_secret: Optional[str] = None):
+    def __init__(
+        self, app: ASGIApp, service_key: Optional[str] = None, jwt_secret: Optional[str] = None
+    ):
         super().__init__(app)
         self.service_key = service_key
         self.jwt_secret = jwt_secret
@@ -142,6 +151,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware if STARLETTE_AVAILABLE else ob
         if self.jwt_secret and auth_header.startswith("Bearer "):
             token = auth_header[7:]
             from .auth import decode_token
+
             payload = decode_token(token, self.jwt_secret)
             if payload is None:
                 return JSONResponse(
@@ -187,7 +197,8 @@ class TimeoutMiddleware(BaseHTTPMiddleware if STARLETTE_AVAILABLE else object):
         except asyncio.TimeoutError:
             logger.error(
                 "request_timeout %s (limit %.1fs)",
-                request.url.path, self.timeout_seconds,
+                request.url.path,
+                self.timeout_seconds,
             )
             return JSONResponse(
                 status_code=504,
@@ -202,7 +213,7 @@ class TimeoutMiddleware(BaseHTTPMiddleware if STARLETTE_AVAILABLE else object):
 
 def setup_middlewares(
     app: Any,
-    cors_origins: List[str] = None,
+    cors_origins: list[str] = None,
     rate_limit: str = "100/minute",
     timeout_seconds: float = 60.0,
     jwt_secret: Optional[str] = None,

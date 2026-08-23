@@ -10,30 +10,25 @@ import json
 import os
 import re
 import tempfile
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from fastapi import Body, Depends, FastAPI, HTTPException, Request, UploadFile, File, Form
-from pydantic import BaseModel, Field
-
+from fastapi import Body, FastAPI, File, Form, HTTPException, Request, UploadFile
 from migrator_gen import (
-    SyncMigrationClient,
     Rule,
-    SDKConfig,
+    SyncMigrationClient,
 )
 from migrator_gen.exceptions import SDKError
+from pydantic import BaseModel, Field
 
-from shared.middleware import setup_middlewares, create_rate_limiter
-from shared.metrics import setup_metrics, MetricsCollector
-from shared.logging import setup_logging
-from shared.exceptions import global_exception_handler, MigratorBaseException
 from shared.auth import (
     generate_api_key,
-    verify_api_key,
-    Role,
 )
+from shared.logging import setup_logging
+from shared.metrics import MetricsCollector, setup_metrics
+from shared.middleware import create_rate_limiter, setup_middlewares
 
 VERSION = "0.2.0"
 TITLE = "MigratorGen API"
@@ -70,7 +65,7 @@ _metrics = MetricsCollector(service_name="api")
 
 class MigrateCodeRequest(BaseModel):
     source_code: str = Field(..., description="Source code to migrate")
-    rules: List[Dict[str, Any]] = Field(..., description="Migration rules")
+    rules: list[dict[str, Any]] = Field(..., description="Migration rules")
     source_version: str = "1.0.0"
     target_version: str = "latest"
     dry_run: bool = False
@@ -79,16 +74,16 @@ class MigrateCodeRequest(BaseModel):
 class MigrateCodeResponse(BaseModel):
     original_code: str = ""
     transformed_code: str = ""
-    changes: List[str] = []
-    rules_applied: List[str] = []
+    changes: list[str] = []
+    rules_applied: list[str] = []
     average_confidence: float = 0.0
     was_modified: bool = False
-    errors: List[str] = []
+    errors: list[str] = []
 
 
 class PreviewRequest(BaseModel):
     source_code: str
-    rules: List[Dict[str, Any]]
+    rules: list[dict[str, Any]]
     source_version: str = "1.0.0"
     target_version: str = "latest"
 
@@ -118,7 +113,7 @@ class ResolvePathResponse(BaseModel):
     source_version: str
     target_version: str
     is_upgrade: bool = True
-    steps: List[Dict[str, Any]] = []
+    steps: list[dict[str, Any]] = []
     rule_count: int = 0
 
 
@@ -142,15 +137,15 @@ class ParseChangelogRequest(BaseModel):
 
 class APIKeyCreateRequest(BaseModel):
     name: str
-    scopes: List[str] = Field(default_factory=lambda: ["migrate", "read"])
+    scopes: list[str] = Field(default_factory=lambda: ["migrate", "read"])
 
 
 class APIKeyResponse(BaseModel):
     id: str
     name: str
-    key: Optional[str] = None
+    key: str | None = None
     key_prefix: str
-    scopes: List[str]
+    scopes: list[str]
     created_at: str
     is_active: bool
 
@@ -158,13 +153,13 @@ class APIKeyResponse(BaseModel):
 # ── In-memory stores (replace with DB in production) ─────────────
 
 
-_api_keys: Dict[str, Dict[str, Any]] = {}
+_api_keys: dict[str, dict[str, Any]] = {}
 
 
 # ── Helpers ───────────────────────────────────────────────────────
 
 
-def _parse_rules(rules_data: List[Dict[str, Any]]) -> List[Rule]:
+def _parse_rules(rules_data: list[dict[str, Any]]) -> list[Rule]:
     try:
         return [Rule.from_dict(r) for r in rules_data]
     except Exception as e:
@@ -222,7 +217,7 @@ async def create_api_key(request: APIKeyCreateRequest, req: Request):
     )
 
 
-@app.get("/api/v1/keys", response_model=List[APIKeyResponse])
+@app.get("/api/v1/keys", response_model=list[APIKeyResponse])
 async def list_api_keys(req: Request):
     tenant_id = getattr(req.state, "tenant_id", None)
     if not tenant_id:
@@ -362,7 +357,8 @@ async def validate_rules(request: ValidateRulesRequest):
 async def generate_from_changelog(request: GenerateFromChangelogRequest):
     try:
         result = _client.generate_rules_from_changelog(
-            request.changelog_text, request.library_name,
+            request.changelog_text,
+            request.library_name,
         )
         return {
             "version": result.version,
@@ -393,7 +389,8 @@ async def generate_from_diff(request: GenerateFromDiffRequest):
 async def suggest_migrations(request: SuggestRequest):
     try:
         analysis = _client.suggest_migrations(
-            request.file_path, request.destination_library,
+            request.file_path,
+            request.destination_library,
         )
         return {
             "imports": [{"module": i.module, "name": i.name} for i in analysis.imports],
@@ -412,13 +409,17 @@ async def suggest_migrations(request: SuggestRequest):
 async def resolve_migration_path(request: ResolvePathRequest):
     try:
         path = _client.resolve_path(
-            request.source_version, request.target_version, request.library_name,
+            request.source_version,
+            request.target_version,
+            request.library_name,
         )
         return ResolvePathResponse(
             source_version=path.source_version,
             target_version=path.target_version,
             is_upgrade=path.is_upgrade,
-            steps=[{"source": s.source, "target": s.target, "rules": len(s.rules)} for s in path.steps],
+            steps=[
+                {"source": s.source, "target": s.target, "rules": len(s.rules)} for s in path.steps
+            ],
             rule_count=path.rule_count,
         )
     except SDKError as e:
@@ -474,16 +475,18 @@ async def generate_migrator_package(
 
 
 @app.post("/api/v1/dependencies/check")
-async def check_dependencies(requirements: List[str] = Body(...)):
+async def check_dependencies(requirements: list[str] = Body(...)):
     known = set(_client.list_libraries().keys())
     results = []
     for req in requirements:
         parts = re.split(r"[<>=!]+", req)
         pkg = parts[0].strip()
-        results.append({
-            "package": pkg,
-            "migration_available": pkg in known,
-        })
+        results.append(
+            {
+                "package": pkg,
+                "migration_available": pkg in known,
+            }
+        )
     return {
         "dependencies": results,
         "total_checked": len(results),
@@ -502,13 +505,13 @@ class UserPackCreateRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     description: str = ""
     library: str = Field(..., min_length=1, max_length=100)
-    versions: List[Dict[str, Any]] = Field(default_factory=list)
+    versions: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class UserPackUpdateRequest(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
-    versions: Optional[List[Dict[str, Any]]] = None
+    name: str | None = None
+    description: str | None = None
+    versions: list[dict[str, Any]] | None = None
 
 
 class UserPackRuleRequest(BaseModel):
@@ -516,18 +519,18 @@ class UserPackRuleRequest(BaseModel):
     change_type: str = "custom_replacement"
     description: str = ""
     version_introduced: str = ""
-    old_name: Optional[str] = None
-    new_name: Optional[str] = None
-    function_name: Optional[str] = None
-    argument_name: Optional[str] = None
-    new_argument_name: Optional[str] = None
-    replacement: Optional[str] = None
+    old_name: str | None = None
+    new_name: str | None = None
+    function_name: str | None = None
+    argument_name: str | None = None
+    new_argument_name: str | None = None
+    replacement: str | None = None
     safety: str = "safe"
     confidence_hint: str = "high"
-    tags: List[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
 
 
-def _read_user_pack(pack_id: str) -> Optional[Dict[str, Any]]:
+def _read_user_pack(pack_id: str) -> dict[str, Any] | None:
     pack_file = USER_PACKS_DIR / f"{pack_id}.json"
     if not pack_file.exists():
         return None
@@ -537,7 +540,7 @@ def _read_user_pack(pack_id: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-def _write_user_pack(pack_id: str, data: Dict[str, Any]) -> None:
+def _write_user_pack(pack_id: str, data: dict[str, Any]) -> None:
     pack_file = USER_PACKS_DIR / f"{pack_id}.json"
     pack_file.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
 
@@ -552,7 +555,7 @@ def _delete_user_pack_file(pack_id: str) -> bool:
 
 @app.get("/api/v1/user-packs")
 async def list_user_packs(req: Request):
-    tenant_id = getattr(req.state, "tenant_id", None)
+    getattr(req.state, "tenant_id", None)
     packs = []
     for pack_file in USER_PACKS_DIR.glob("*.json"):
         try:
@@ -560,17 +563,19 @@ async def list_user_packs(req: Request):
             pack_id = pack_file.stem
             versions = data.get("versions", [])
             rule_count = sum(len(v.get("rules", [])) for v in versions)
-            packs.append({
-                "id": pack_id,
-                "name": data.get("name", pack_id),
-                "description": data.get("description", ""),
-                "library": data.get("library", pack_id),
-                "version_count": len(versions),
-                "rule_count": rule_count,
-                "is_published": data.get("is_published", False),
-                "created_at": data.get("created_at", ""),
-                "updated_at": data.get("updated_at", ""),
-            })
+            packs.append(
+                {
+                    "id": pack_id,
+                    "name": data.get("name", pack_id),
+                    "description": data.get("description", ""),
+                    "library": data.get("library", pack_id),
+                    "version_count": len(versions),
+                    "rule_count": rule_count,
+                    "is_published": data.get("is_published", False),
+                    "created_at": data.get("created_at", ""),
+                    "updated_at": data.get("updated_at", ""),
+                }
+            )
         except Exception:
             continue
     return {"packs": packs}
@@ -627,7 +632,7 @@ async def update_user_pack(pack_id: str, request: UserPackUpdateRequest, req: Re
     data = _read_user_pack(pack_id)
     if not data:
         raise HTTPException(status_code=404, detail="Pack not found")
-    
+
     if request.name is not None:
         data["name"] = request.name
     if request.description is not None:
@@ -635,7 +640,7 @@ async def update_user_pack(pack_id: str, request: UserPackUpdateRequest, req: Re
     if request.versions is not None:
         data["versions"] = request.versions
     data["updated_at"] = datetime.now(timezone.utc).isoformat()
-    
+
     _write_user_pack(pack_id, data)
     return {"status": "updated", "id": pack_id}
 
@@ -663,7 +668,7 @@ async def add_rule_to_pack(pack_id: str, version: str, request: UserPackRuleRequ
     data = _read_user_pack(pack_id)
     if not data:
         raise HTTPException(status_code=404, detail="Pack not found")
-    
+
     rule_id = request.id or f"{pack_id[:4]}-{len(data.get('versions', []))}-{uuid.uuid4().hex[:4]}"
     rule_data = {
         "id": rule_id,
@@ -680,23 +685,23 @@ async def add_rule_to_pack(pack_id: str, version: str, request: UserPackRuleRequ
         "confidence_hint": request.confidence_hint,
         "tags": request.tags,
     }
-    
+
     versions = data.get("versions", [])
     target_version = None
     for v in versions:
         if v.get("version") == version:
             target_version = v
             break
-    
+
     if target_version is None:
         target_version = {"version": version, "rules": []}
         versions.append(target_version)
-    
+
     target_version.setdefault("rules", []).append(rule_data)
     data["versions"] = versions
     data["updated_at"] = datetime.now(timezone.utc).isoformat()
     _write_user_pack(pack_id, data)
-    
+
     return {"status": "created", "rule_id": rule_id}
 
 
@@ -705,6 +710,7 @@ async def add_rule_to_pack(pack_id: str, version: str, request: UserPackRuleRequ
 
 def main() -> None:
     import uvicorn
+
     setup_logging(
         app_env=os.environ.get("APP_ENV", "development"),
         log_level=os.environ.get("LOG_LEVEL", "INFO"),

@@ -5,12 +5,11 @@ from __future__ import annotations
 import logging
 import os
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any
 
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-
 from migrator_gen import MigrationClient, Rule
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +24,7 @@ app = FastAPI(
 
 class MigrateCodeRequest(BaseModel):
     source_code: str
-    rules: List[Dict[str, Any]]
+    rules: list[dict[str, Any]]
     source_version: str = "1.0.0"
     target_version: str = "latest"
     dry_run: bool = False
@@ -33,7 +32,7 @@ class MigrateCodeRequest(BaseModel):
 
 class PreviewRequest(BaseModel):
     source_code: str
-    rules: List[Dict[str, Any]]
+    rules: list[dict[str, Any]]
 
 
 class GenerateRulesDiffRequest(BaseModel):
@@ -62,7 +61,8 @@ async def migrate_code(req: MigrateCodeRequest):
     try:
         rules = [Rule.from_dict(r) for r in req.rules]
         result = _client.migrate_code(
-            req.source_code, rules,
+            req.source_code,
+            rules,
             source_version=req.source_version,
             target_version=req.target_version,
             dry_run=req.dry_run,
@@ -107,7 +107,8 @@ async def generate_rules_from_diff(req: GenerateRulesDiffRequest):
 async def generate_rules_from_changelog(req: GenerateRulesChangelogRequest):
     try:
         result = _client.generate_rules_from_changelog(
-            req.changelog_text, req.library_name,
+            req.changelog_text,
+            req.library_name,
         )
         return {
             "version": result.version,
@@ -120,5 +121,6 @@ async def generate_rules_from_changelog(req: GenerateRulesChangelogRequest):
 
 if __name__ == "__main__":
     import uvicorn
+
     port = int(os.environ.get("PORT", 8001))
     uvicorn.run(app, host="0.0.0.0", port=port)

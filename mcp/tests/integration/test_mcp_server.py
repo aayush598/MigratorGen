@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from migrator_gen_mcp.server.app import MigratorGenMCPServer
 
 
@@ -23,17 +21,23 @@ class TestMCPIntegration:
             "version_introduced": "2.0.0",
         }
 
-        preview = self.server.call_tool("preview_migration", {
-            "source_code": source,
-            "rules": [rule],
-        })
+        preview = self.server.call_tool(
+            "preview_migration",
+            {
+                "source_code": source,
+                "rules": [rule],
+            },
+        )
         assert "Preview:" in preview
         assert "create_connection" in preview
 
-        result = self.server.call_tool("run_migration", {
-            "source_code": source,
-            "rules": [rule],
-        })
+        result = self.server.call_tool(
+            "run_migration",
+            {
+                "source_code": source,
+                "rules": [rule],
+            },
+        )
         assert "Migration complete" in result
         assert "create_connection" in result
 
@@ -78,9 +82,12 @@ class TestMCPIntegration:
         assert isinstance(libraries, str)
 
     def test_resolve_path_endpoint(self):
-        result = self.server.call_tool("resolve_path", {
-            "source_version": "1.0.0",
-            "target_version": "2.0.0",
-            "library_name": "test_lib",
-        })
+        result = self.server.call_tool(
+            "resolve_path",
+            {
+                "source_version": "1.0.0",
+                "target_version": "2.0.0",
+                "library_name": "test_lib",
+            },
+        )
         assert isinstance(result, str)

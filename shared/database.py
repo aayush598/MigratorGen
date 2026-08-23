@@ -6,26 +6,29 @@ Provides async session management, connection pooling, and SaaS models.
 from __future__ import annotations
 
 import logging
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from typing import Any, AsyncGenerator, Dict, List, Optional
 from uuid import UUID, uuid4
 
 try:
     from sqlalchemy import (
-        Column,
-        DateTime,
-        String,
-        Integer,
-        Text,
         Boolean,
+        Column,  # noqa: F401
+        DateTime,
         Float,
-        Enum as SQLEnum,
-        Index,
         ForeignKey,
-        text,
+        Index,
+        Integer,
+        String,
+        Text,
+        text,  # noqa: F401
     )
-    from sqlalchemy.dialects.postgresql import UUID as PG_UUID, JSON, ARRAY
+    from sqlalchemy import (
+        Enum as SQLEnum,  # noqa: F401
+    )
+    from sqlalchemy.dialects.postgresql import ARRAY, JSON
+    from sqlalchemy.dialects.postgresql import UUID as PG_UUID
     from sqlalchemy.ext.asyncio import (
         AsyncEngine,
         AsyncSession,
@@ -34,6 +37,7 @@ try:
     )
     from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
     from sqlalchemy.pool import AsyncAdaptedQueuePool
+
     SQLALCHEMY_AVAILABLE = True
 except ImportError:
     SQLALCHEMY_AVAILABLE = False
@@ -44,6 +48,7 @@ logger = logging.getLogger(__name__)
 
 class Base(DeclarativeBase):
     """SQLAlchemy declarative base."""
+
     pass
 
 
@@ -71,13 +76,20 @@ class Tenant(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     slug: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
     plan: Mapped[str] = mapped_column(String(32), nullable=False, default="free")
-    settings: Mapped[Optional[Dict]] = mapped_column(JSON, nullable=True)
+    settings: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
 
-    users: Mapped[List["User"]] = relationship("User", back_populates="tenant")
-    api_keys: Mapped[List["APIKey"]] = relationship("APIKey", back_populates="tenant")
+    users: Mapped[list[User]] = relationship("User", back_populates="tenant")
+    api_keys: Mapped[list[APIKey]] = relationship("APIKey", back_populates="tenant")
 
 
 class User(Base):
@@ -99,16 +111,20 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    tenant_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    tenant_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True
+    )
     email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     role: Mapped[str] = mapped_column(String(32), nullable=False, default="member")
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    last_login: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    last_login: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
 
-    tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="users")
+    tenant: Mapped[Tenant] = relationship("Tenant", back_populates="users")
 
 
 class APIKey(Base):
@@ -131,17 +147,25 @@ class APIKey(Base):
     __tablename__ = "api_keys"
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    tenant_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
-    user_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    tenant_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True
+    )
+    user_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     key_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
     key_prefix: Mapped[str] = mapped_column(String(16), nullable=False)
-    scopes: Mapped[List[str]] = mapped_column(ARRAY(String), nullable=False, default=["migrate", "read"])
+    scopes: Mapped[list[str]] = mapped_column(
+        ARRAY(String), nullable=False, default=["migrate", "read"]
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    last_used_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
 
-    tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="api_keys")
+    tenant: Mapped[Tenant] = relationship("Tenant", back_populates="api_keys")
 
 
 # ── Migration Models ────────────────────────────────────────────
@@ -174,22 +198,24 @@ class MigrationJob(Base):
     __tablename__ = "migration_jobs"
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    tenant_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
-    user_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    tenant_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    user_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     status: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
     source_version: Mapped[str] = mapped_column(String(32), nullable=False)
     target_version: Mapped[str] = mapped_column(String(32), nullable=False)
-    input_path: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    output_path: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    rules_applied: Mapped[Optional[Dict]] = mapped_column(JSON, nullable=True)
-    bytes_processed: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    duration_ms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    confidence_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-    ip_address: Mapped[Optional[str]] = mapped_column(String(45), nullable=True)
-    user_agent: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
-    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    input_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    output_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    rules_applied: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    bytes_processed: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    confidence_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     __table_args__ = (
         Index("ix_migration_jobs_status_created", "status", "created_at"),
@@ -215,11 +241,15 @@ class MigrationSession(Base):
     __tablename__ = "migration_sessions"
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    tenant_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
-    user_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
-    ip_address: Mapped[Optional[str]] = mapped_column(String(45), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
-    last_activity: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    tenant_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    user_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+    last_activity: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
     migration_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     total_bytes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
@@ -244,15 +274,17 @@ class AuditLog(Base):
     __tablename__ = "audit_logs"
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    tenant_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
-    user_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    tenant_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    user_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     action: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     resource_type: Mapped[str] = mapped_column(String(64), nullable=False)
-    resource_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
-    details: Mapped[Optional[Dict]] = mapped_column(JSON, nullable=True)
-    ip_address: Mapped[Optional[str]] = mapped_column(String(45), nullable=True)
-    user_agent: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    resource_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    details: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
 
     __table_args__ = (
         Index("ix_audit_logs_tenant_action", "tenant_id", "action"),
@@ -280,13 +312,17 @@ class BillingSubscription(Base):
     __tablename__ = "billing_subscriptions"
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    tenant_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, unique=True, index=True)
+    tenant_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, unique=True, index=True
+    )
     plan: Mapped[str] = mapped_column(String(32), nullable=False, default="free")
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="active")
-    stripe_customer_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
-    stripe_subscription_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
-    current_period_start: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    current_period_end: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    stripe_customer_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    stripe_subscription_id: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, index=True
+    )
+    current_period_start: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    current_period_end: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     migration_count_this_period: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     migration_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
 
@@ -294,8 +330,8 @@ class BillingSubscription(Base):
 # ── Engine & Session ────────────────────────────────────────────
 
 
-_engine: Optional[AsyncEngine] = None
-_session_maker: Optional[async_sessionmaker[AsyncSession]] = None
+_engine: AsyncEngine | None = None
+_session_maker: async_sessionmaker[AsyncSession] | None = None
 
 
 def create_engine(url: str, pool_size: int = 20, max_overflow: int = 10) -> AsyncEngine:
@@ -327,12 +363,12 @@ def create_engine(url: str, pool_size: int = 20, max_overflow: int = 10) -> Asyn
     return _engine
 
 
-def get_engine() -> Optional[AsyncEngine]:
+def get_engine() -> AsyncEngine | None:
     """Get the current engine instance."""
     return _engine
 
 
-async def init_db(url: Optional[str] = None, create_tables: bool = True) -> AsyncEngine:
+async def init_db(url: str | None = None, create_tables: bool = True) -> AsyncEngine:
     """
     Initialize the database connection.
 

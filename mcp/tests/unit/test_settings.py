@@ -23,6 +23,7 @@ class TestMCPSettings:
 
     def test_port_validation(self):
         import pytest
+
         with pytest.raises(Exception):
             MCPSettings(port=99999)
 
@@ -35,6 +36,7 @@ class TestLoadSettings:
 
     def test_nonexistent_config_raises(self):
         import pytest
+
         with pytest.raises(ConfigError):
             load_settings("/nonexistent/config.toml")
 

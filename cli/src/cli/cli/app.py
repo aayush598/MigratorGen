@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import sys
-from typing import Any
 
 from migrator_gen.exceptions import SDKError
 

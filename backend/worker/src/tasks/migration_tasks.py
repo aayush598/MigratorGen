@@ -5,10 +5,9 @@ from __future__ import annotations
 import logging
 import time
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from celery import shared_task
-
 from migrator_gen import MigrationClient, Rule
 
 logger = logging.getLogger(__name__)
@@ -25,19 +24,20 @@ _client = MigrationClient(mode="local")
 def migrate_code_task(
     self,
     code: str,
-    rules_data: List[Dict[str, Any]],
+    rules_data: list[dict[str, Any]],
     source_version: str,
     target_version: str,
-    job_id: Optional[str] = None,
-    tenant_id: Optional[str] = None,
-    user_id: Optional[str] = None,
-) -> Dict[str, Any]:
+    job_id: str | None = None,
+    tenant_id: str | None = None,
+    user_id: str | None = None,
+) -> dict[str, Any]:
     """Migrate source code in a background Celery task."""
     start = time.perf_counter()
     try:
         rules = [Rule.from_dict(r) for r in rules_data]
         result = _client.migrate_code(
-            code, rules,
+            code,
+            rules,
             source_version=source_version,
             target_version=target_version,
         )
@@ -82,13 +82,13 @@ def migrate_code_task(
 def migrate_directory_task(
     self,
     directory_path: str,
-    rules_data: List[Dict[str, Any]],
+    rules_data: list[dict[str, Any]],
     source_version: str,
     target_version: str,
-    job_id: Optional[str] = None,
-    tenant_id: Optional[str] = None,
-    user_id: Optional[str] = None,
-) -> Dict[str, Any]:
+    job_id: str | None = None,
+    tenant_id: str | None = None,
+    user_id: str | None = None,
+) -> dict[str, Any]:
     """Migrate all Python files in a directory."""
     from pathlib import Path
 
@@ -105,18 +105,24 @@ def migrate_directory_task(
     for f in directory.rglob("*.py"):
         try:
             code = f.read_text(encoding="utf-8")
-            result = _client.migrate_code(code, rules, source_version=source_version, target_version=target_version)
-            results.append({
-                "file": str(f),
-                "was_modified": result.was_modified,
-                "changes": result.changes,
-                "errors": result.errors,
-            })
+            result = _client.migrate_code(
+                code, rules, source_version=source_version, target_version=target_version
+            )
+            results.append(
+                {
+                    "file": str(f),
+                    "was_modified": result.was_modified,
+                    "changes": result.changes,
+                    "errors": result.errors,
+                }
+            )
             if result.was_modified:
                 files_modified += 1
         except Exception as exc:
             files_failed += 1
-            results.append({"file": str(f), "was_modified": False, "changes": [], "errors": [str(exc)]})
+            results.append(
+                {"file": str(f), "was_modified": False, "changes": [], "errors": [str(exc)]}
+            )
 
     duration_ms = int((time.perf_counter() - start) * 1000)
 
@@ -157,8 +163,10 @@ def cleanup_old_jobs():
 
     try:
         import asyncio
-        from shared.database import get_session, MigrationJob
+
         from sqlalchemy import delete
+
+        from shared.database import MigrationJob, get_session
 
         async def _cleanup():
             nonlocal deleted_count

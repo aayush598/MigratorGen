@@ -3,7 +3,6 @@ CST Transformers - LibCST-based code transformers for each ChangeType.
 Each transformer handles one specific type of migration rule.
 """
 
-
 import libcst as cst
 
 from . import transformers_advanced as adv
@@ -12,6 +11,7 @@ from .changelog_parser import ChangeType, MigrationRule
 # ---------------------------------------------------------------------------
 # Base transformer
 # ---------------------------------------------------------------------------
+
 
 class BaseTransformer(cst.CSTTransformer):
     """Base class for all migrator transformers."""
@@ -28,12 +28,11 @@ class BaseTransformer(cst.CSTTransformer):
 # 1. Rename Function Call / Definition
 # ---------------------------------------------------------------------------
 
+
 class RenameFunctionTransformer(BaseTransformer):
     """Renames function calls and definitions from old_name to new_name."""
 
-    def leave_Name(
-        self, original_node: cst.Name, updated_node: cst.Name
-    ) -> cst.Name:
+    def leave_Name(self, original_node: cst.Name, updated_node: cst.Name) -> cst.Name:
         if updated_node.value == self.rule.old_name:
             self._record(f"Renamed function: {self.rule.old_name} -> {self.rule.new_name}")
             return updated_node.with_changes(value=self.rule.new_name)
@@ -53,12 +52,11 @@ class RenameFunctionTransformer(BaseTransformer):
 # 2. Rename Class
 # ---------------------------------------------------------------------------
 
+
 class RenameClassTransformer(BaseTransformer):
     """Renames class references from old_name to new_name."""
 
-    def leave_Name(
-        self, original_node: cst.Name, updated_node: cst.Name
-    ) -> cst.Name:
+    def leave_Name(self, original_node: cst.Name, updated_node: cst.Name) -> cst.Name:
         if updated_node.value == self.rule.old_name:
             self._record(f"Renamed class: {self.rule.old_name} -> {self.rule.new_name}")
             return updated_node.with_changes(value=self.rule.new_name)
@@ -78,6 +76,7 @@ class RenameClassTransformer(BaseTransformer):
 # 3. Rename Attribute Access  (obj.old_attr -> obj.new_attr)
 # ---------------------------------------------------------------------------
 
+
 class RenameAttributeTransformer(BaseTransformer):
     """Renames attribute accesses."""
 
@@ -88,18 +87,15 @@ class RenameAttributeTransformer(BaseTransformer):
             isinstance(updated_node.attr, cst.Name)
             and updated_node.attr.value == self.rule.old_name
         ):
-            self._record(
-                f"Renamed attribute: .{self.rule.old_name} -> .{self.rule.new_name}"
-            )
-            return updated_node.with_changes(
-                attr=cst.Name(self.rule.new_name)
-            )
+            self._record(f"Renamed attribute: .{self.rule.old_name} -> .{self.rule.new_name}")
+            return updated_node.with_changes(attr=cst.Name(self.rule.new_name))
         return updated_node
 
 
 # ---------------------------------------------------------------------------
 # 4. Rename Import
 # ---------------------------------------------------------------------------
+
 
 class RenameImportTransformer(BaseTransformer):
     """
@@ -150,9 +146,7 @@ class RenameImportTransformer(BaseTransformer):
             names=new_names,
         )
 
-    def leave_Import(
-        self, original_node: cst.Import, updated_node: cst.Import
-    ) -> cst.Import:
+    def leave_Import(self, original_node: cst.Import, updated_node: cst.Import) -> cst.Import:
         old_module = self.rule.old_module or ""
         new_module = self.rule.new_module or ""
         if not old_module or not new_module:
@@ -165,9 +159,7 @@ class RenameImportTransformer(BaseTransformer):
             if module_str == old_module:
                 new_aliases.append(alias.with_changes(name=_make_dotted_name(new_module)))
                 changed = True
-                self._record(
-                    f"Renamed import: import {old_module} -> import {new_module}"
-                )
+                self._record(f"Renamed import: import {old_module} -> import {new_module}")
             else:
                 new_aliases.append(alias)
 
@@ -181,15 +173,14 @@ class RenameImportTransformer(BaseTransformer):
 # 5. Add Argument to Function Call
 # ---------------------------------------------------------------------------
 
+
 class AddArgumentTransformer(BaseTransformer):
     """
     Adds a keyword argument to specific function calls.
     E.g., foo() -> foo(new_arg=default_value)
     """
 
-    def leave_Call(
-        self, original_node: cst.Call, updated_node: cst.Call
-    ) -> cst.Call:
+    def leave_Call(self, original_node: cst.Call, updated_node: cst.Call) -> cst.Call:
         func_name = _get_call_name(updated_node.func)
         if func_name != self.rule.function_name:
             return updated_node
@@ -213,16 +204,12 @@ class AddArgumentTransformer(BaseTransformer):
         existing_args = list(updated_node.args)
         if existing_args:
             last = existing_args[-1]
-            existing_args[-1] = last.with_changes(
-                comma=cst.MaybeSentinel.DEFAULT
-            )
+            existing_args[-1] = last.with_changes(comma=cst.MaybeSentinel.DEFAULT)
             existing_args.append(new_arg)
         else:
             existing_args = [new_arg]
 
-        self._record(
-            f"Added argument '{self.rule.argument_name}={default_val}' to {func_name}()"
-        )
+        self._record(f"Added argument '{self.rule.argument_name}={default_val}' to {func_name}()")
         return updated_node.with_changes(args=existing_args)
 
 
@@ -230,30 +217,26 @@ class AddArgumentTransformer(BaseTransformer):
 # 6. Remove Argument from Function Call
 # ---------------------------------------------------------------------------
 
+
 class RemoveArgumentTransformer(BaseTransformer):
     """Removes a specific argument from function calls."""
 
-    def leave_Call(
-        self, original_node: cst.Call, updated_node: cst.Call
-    ) -> cst.Call:
+    def leave_Call(self, original_node: cst.Call, updated_node: cst.Call) -> cst.Call:
         func_name = _get_call_name(updated_node.func)
         if func_name != self.rule.function_name:
             return updated_node
 
         new_args = [
-            arg for arg in updated_node.args
+            arg
+            for arg in updated_node.args
             if not (arg.keyword and arg.keyword.value == self.rule.argument_name)
         ]
 
         if len(new_args) < len(updated_node.args):
             # Fix trailing comma
             if new_args:
-                new_args[-1] = new_args[-1].with_changes(
-                    comma=cst.MaybeSentinel.DEFAULT
-                )
-            self._record(
-                f"Removed argument '{self.rule.argument_name}' from {func_name}()"
-            )
+                new_args[-1] = new_args[-1].with_changes(comma=cst.MaybeSentinel.DEFAULT)
+            self._record(f"Removed argument '{self.rule.argument_name}' from {func_name}()")
             return updated_node.with_changes(args=new_args)
 
         return updated_node
@@ -263,12 +246,11 @@ class RemoveArgumentTransformer(BaseTransformer):
 # 7. Change Argument Default Value
 # ---------------------------------------------------------------------------
 
+
 class ChangeArgumentDefaultTransformer(BaseTransformer):
     """Changes the default value of a parameter in function definitions."""
 
-    def leave_Param(
-        self, original_node: cst.Param, updated_node: cst.Param
-    ) -> cst.Param:
+    def leave_Param(self, original_node: cst.Param, updated_node: cst.Param) -> cst.Param:
         if updated_node.name.value != self.rule.argument_name:
             return updated_node
 
@@ -276,17 +258,14 @@ class ChangeArgumentDefaultTransformer(BaseTransformer):
         if new_default is None:
             return updated_node
 
-        self._record(
-            f"Changed default for '{self.rule.argument_name}' to {new_default}"
-        )
-        return updated_node.with_changes(
-            default=cst.parse_expression(new_default)
-        )
+        self._record(f"Changed default for '{self.rule.argument_name}' to {new_default}")
+        return updated_node.with_changes(default=cst.parse_expression(new_default))
 
 
 # ---------------------------------------------------------------------------
 # 8. Reorder Arguments in Function Definition
 # ---------------------------------------------------------------------------
+
 
 class ReorderArgumentsTransformer(BaseTransformer):
     """Reorders parameters in a function definition."""
@@ -323,14 +302,13 @@ class ReorderArgumentsTransformer(BaseTransformer):
                 fixed.append(p.with_changes(comma=cst.MaybeSentinel.DEFAULT))
 
         self._record(f"Reordered parameters of {self.rule.function_name}()")
-        return updated_node.with_changes(
-            params=params.with_changes(params=fixed)
-        )
+        return updated_node.with_changes(params=params.with_changes(params=fixed))
 
 
 # ---------------------------------------------------------------------------
 # 9. Deprecate / Warn on Function Use
 # ---------------------------------------------------------------------------
+
 
 class DeprecateFunctionTransformer(BaseTransformer):
     """
@@ -363,6 +341,7 @@ class DeprecateFunctionTransformer(BaseTransformer):
 # 10. Move to Module (update imports)
 # ---------------------------------------------------------------------------
 
+
 class MoveToModuleTransformer(BaseTransformer):
     """
     Updates imports when a symbol is moved from one module to another.
@@ -388,9 +367,7 @@ class MoveToModuleTransformer(BaseTransformer):
                 self._record(
                     f"Moved import: {symbol} from {self.rule.source_module} to {new_module}"
                 )
-                return updated_node.with_changes(
-                    module=_make_dotted_name(new_module)
-                )
+                return updated_node.with_changes(module=_make_dotted_name(new_module))
 
         return updated_node
 
@@ -398,6 +375,7 @@ class MoveToModuleTransformer(BaseTransformer):
 # ---------------------------------------------------------------------------
 # 11. Add Decorator
 # ---------------------------------------------------------------------------
+
 
 class AddDecoratorTransformer(BaseTransformer):
     """Adds a decorator to a specific function or class definition."""
@@ -419,14 +397,13 @@ class AddDecoratorTransformer(BaseTransformer):
             leading_lines=[],
         )
         self._record(f"Added @{dec_name} to {self.rule.function_name}()")
-        return updated_node.with_changes(
-            decorators=[*updated_node.decorators, new_decorator]
-        )
+        return updated_node.with_changes(decorators=[*updated_node.decorators, new_decorator])
 
 
 # ---------------------------------------------------------------------------
 # 12. Remove Decorator
 # ---------------------------------------------------------------------------
+
 
 class RemoveDecoratorTransformer(BaseTransformer):
     """Removes a specific decorator from functions."""
@@ -439,7 +416,8 @@ class RemoveDecoratorTransformer(BaseTransformer):
 
         dec_name = self.rule.decorator_name
         new_decorators = [
-            d for d in updated_node.decorators
+            d
+            for d in updated_node.decorators
             if not (isinstance(d.decorator, cst.Name) and d.decorator.value == dec_name)
         ]
 
@@ -453,6 +431,7 @@ class RemoveDecoratorTransformer(BaseTransformer):
 # ---------------------------------------------------------------------------
 # 13. Replace Function Call with Property Access
 # ---------------------------------------------------------------------------
+
 
 class ReplaceWithPropertyTransformer(BaseTransformer):
     """
@@ -474,9 +453,7 @@ class ReplaceWithPropertyTransformer(BaseTransformer):
         if updated_node.args:
             return updated_node
 
-        self._record(
-            f"Replaced {self.rule.old_name}() with property {self.rule.new_name}"
-        )
+        self._record(f"Replaced {self.rule.old_name}() with property {self.rule.new_name}")
         return func.with_changes(attr=cst.Name(self.rule.new_name))
 
 
@@ -484,12 +461,11 @@ class ReplaceWithPropertyTransformer(BaseTransformer):
 # 14. Rename keyword argument in calls
 # ---------------------------------------------------------------------------
 
+
 class RenameArgumentTransformer(BaseTransformer):
     """Renames a keyword argument in specific function calls."""
 
-    def leave_Call(
-        self, original_node: cst.Call, updated_node: cst.Call
-    ) -> cst.Call:
+    def leave_Call(self, original_node: cst.Call, updated_node: cst.Call) -> cst.Call:
         func_name = _get_call_name(updated_node.func)
         if func_name != self.rule.function_name:
             return updated_node
@@ -498,9 +474,7 @@ class RenameArgumentTransformer(BaseTransformer):
         changed = False
         for arg in updated_node.args:
             if arg.keyword and arg.keyword.value == self.rule.argument_name:
-                new_args.append(
-                    arg.with_changes(keyword=cst.Name(self.rule.new_argument_name))
-                )
+                new_args.append(arg.with_changes(keyword=cst.Name(self.rule.new_argument_name)))
                 changed = True
             else:
                 new_args.append(arg)
@@ -562,6 +536,7 @@ def get_transformer(rule: MigrationRule) -> BaseTransformer | None:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _get_dotted_name(node) -> str:
     """Extract dotted name string from a CST node."""

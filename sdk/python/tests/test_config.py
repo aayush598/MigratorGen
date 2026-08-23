@@ -1,4 +1,3 @@
-
 from migrator_gen import SDKConfig
 
 
@@ -24,7 +23,13 @@ class TestSDKConfigDefaults:
 
 class TestSDKConfigBuild:
     def test_build_with_kwargs(self):
-        config = SDKConfig.build(mode="remote", base_url="https://api.example.com", api_key="sk-test", timeout=60, max_retries=5)
+        config = SDKConfig.build(
+            mode="remote",
+            base_url="https://api.example.com",
+            api_key="sk-test",
+            timeout=60,
+            max_retries=5,
+        )
         assert config.mode == "remote"
         assert config.base_url == "https://api.example.com"
         assert config.api_key == "sk-test"

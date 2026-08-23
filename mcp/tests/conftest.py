@@ -9,6 +9,7 @@ import pytest
 def sample_rules_file(tmp_path: Path) -> Path:
     """Create a temporary rules file for testing."""
     import json
+
     path = tmp_path / "rules.json"
     data = {
         "library": "demo",

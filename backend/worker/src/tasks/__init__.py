@@ -24,4 +24,5 @@ class MigrationTask(Task):
 def get_celery_app():
     """Get Celery app instance."""
     from backend.worker.src.celery_app import celery_app
+
     return celery_app

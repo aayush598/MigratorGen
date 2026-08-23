@@ -46,6 +46,7 @@ jobs:
 
       - name: Notify Slack on staging success
         if: success()
+        continue-on-error: true
         uses: slackapi/slack-github-action@v1.25.0
         with:
           payload: |
@@ -56,6 +57,7 @@ jobs:
 
       - name: Notify Slack on staging failure
         if: failure()
+        continue-on-error: true
         uses: slackapi/slack-github-action@v1.25.0
         with:
           payload: |
@@ -114,6 +116,7 @@ jobs:
 
       - name: Notify Slack on production success
         if: success()
+        continue-on-error: true
         uses: slackapi/slack-github-action@v1.25.0
         with:
           payload: |
@@ -124,6 +127,7 @@ jobs:
 
       - name: Notify Slack on production failure
         if: failure()
+        continue-on-error: true
         uses: slackapi/slack-github-action@v1.25.0
         with:
           payload: |

@@ -34,12 +34,14 @@ def cmd_audit(ctx: CLIContext, out: OutputFormatter) -> None:
             found = version_pattern.findall(content)
             if found:
                 results.append({"file": str(f), "versions": sorted(set(found))})
-        out.print_json({
-            "directory": str(directory),
-            "available_versions": available,
-            "file_count": len(py_files),
-            "version_references": results,
-        })
+        out.print_json(
+            {
+                "directory": str(directory),
+                "available_versions": available,
+                "file_count": len(py_files),
+                "version_references": results,
+            }
+        )
         return
 
     out.info(f"Scanning: {directory}")
@@ -69,8 +71,11 @@ def cmd_auto_upgrade(ctx: CLIContext, out: OutputFormatter) -> None:
     if ctx.json_mode:
         info: dict = {"directory": str(directory)}
         if req_file.exists():
-            deps = [d.strip() for d in req_file.read_text().splitlines()
-                    if d.strip() and not d.startswith("#")]
+            deps = [
+                d.strip()
+                for d in req_file.read_text().splitlines()
+                if d.strip() and not d.startswith("#")
+            ]
             info["type"] = "requirements.txt"
             info["dependencies"] = deps
         elif pyproject_file.exists():
@@ -87,8 +92,11 @@ def cmd_auto_upgrade(ctx: CLIContext, out: OutputFormatter) -> None:
 
     if req_file.exists():
         out.info("Found requirements.txt")
-        deps = [d.strip() for d in req_file.read_text().splitlines()
-                if d.strip() and not d.startswith("#")]
+        deps = [
+            d.strip()
+            for d in req_file.read_text().splitlines()
+            if d.strip() and not d.startswith("#")
+        ]
         for dep in deps:
             print(f"   • {dep}")
     elif pyproject_file.exists():
@@ -109,11 +117,11 @@ def _scan_imports(directory: Path) -> set:
     imports_found: set = set()
     for f in directory.rglob("*.py"):
         content = f.read_text(encoding="utf-8", errors="ignore")
-        for m in re.finditer(r'^import\s+([a-zA-Z_][a-zA-Z0-9_.]*)', content, re.MULTILINE):
+        for m in re.finditer(r"^import\s+([a-zA-Z_][a-zA-Z0-9_.]*)", content, re.MULTILINE):
             base = m.group(1).split(".")[0]
             if base not in STDLIB_MODULES:
                 imports_found.add(base)
-        for m in re.finditer(r'^from\s+([a-zA-Z_][a-zA-Z0-9_.]+)\s+import', content, re.MULTILINE):
+        for m in re.finditer(r"^from\s+([a-zA-Z_][a-zA-Z0-9_.]+)\s+import", content, re.MULTILINE):
             base = m.group(1).split(".")[0]
             if base not in STDLIB_MODULES:
                 imports_found.add(base)

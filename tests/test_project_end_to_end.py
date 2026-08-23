@@ -52,6 +52,7 @@ def section(title: str) -> None:
 # 1.  Package structure
 # ═════════════════════════════════════════════════════════════
 
+
 def test_package_structure() -> None:
     section("1. Package Structure")
 
@@ -77,6 +78,7 @@ def test_package_structure() -> None:
 # ═════════════════════════════════════════════════════════════
 # 2.  No old import names
 # ═════════════════════════════════════════════════════════════
+
 
 def test_no_old_import_names() -> None:
     section("2. No old import names")
@@ -111,14 +113,10 @@ def test_no_old_import_names() -> None:
 # 3.  SDK imports
 # ═════════════════════════════════════════════════════════════
 
+
 def test_sdk_imports() -> None:
     section("3. SDK Imports")
     try:
-        from migrator_gen import (
-            MigrationClient, Rule, ChangeType, SDKConfig,
-            VersionChangelog, MigrationFile,
-        )
-        from migrator_gen.exceptions import SDKError, EngineError, APIError
         check("All SDK symbols importable", True)
     except Exception as e:
         check("SDK imports", False, str(e))
@@ -126,12 +124,14 @@ def test_sdk_imports() -> None:
 
     # Version string is set
     from migrator_gen import __version__
+
     check(f"SDK version: {__version__}", bool(__version__))
 
 
 # ═════════════════════════════════════════════════════════════
 # 4.  Client construction & mode detection
 # ═════════════════════════════════════════════════════════════
+
 
 def test_client_construction() -> None:
     section("4. Client Construction")
@@ -149,9 +149,10 @@ def test_client_construction() -> None:
 # 5.  SDK operations
 # ═════════════════════════════════════════════════════════════
 
+
 def test_sdk_operations() -> None:
     section("5. SDK Operations")
-    from migrator_gen import SyncMigrationClient, Rule, ChangeType
+    from migrator_gen import ChangeType, Rule, SyncMigrationClient
 
     client = SyncMigrationClient(mode="local")
 
@@ -159,9 +160,16 @@ def test_sdk_operations() -> None:
     try:
         result = client.migrate_code(
             "def old_func(): pass",
-            [Rule(id="R1", change_type=ChangeType.RENAME_FUNCTION,
-                  version_introduced="2.0.0", description="Rename",
-                  old_name="old_func", new_name="new_func")],
+            [
+                Rule(
+                    id="R1",
+                    change_type=ChangeType.RENAME_FUNCTION,
+                    version_introduced="2.0.0",
+                    description="Rename",
+                    old_name="old_func",
+                    new_name="new_func",
+                )
+            ],
         )
         ok = "new_func" in result.transformed_code and result.was_modified
         check("migrate_code", ok)
@@ -172,9 +180,16 @@ def test_sdk_operations() -> None:
     try:
         preview = client.preview_migration(
             "def old_func(): pass",
-            [Rule(id="R1", change_type=ChangeType.RENAME_FUNCTION,
-                  version_introduced="2.0.0", description="Rename",
-                  old_name="old_func", new_name="new_func")],
+            [
+                Rule(
+                    id="R1",
+                    change_type=ChangeType.RENAME_FUNCTION,
+                    version_introduced="2.0.0",
+                    description="Rename",
+                    old_name="old_func",
+                    new_name="new_func",
+                )
+            ],
         )
         check("preview_migration", bool(preview.diff))
     except Exception as e:
@@ -212,9 +227,16 @@ def test_sdk_operations() -> None:
         tmp.close()
         result = client.migrate_file(
             tmp.name,
-            [Rule(id="R1", change_type=ChangeType.RENAME_FUNCTION,
-                  version_introduced="2.0.0", description="Rename",
-                  old_name="old_func", new_name="new_func")],
+            [
+                Rule(
+                    id="R1",
+                    change_type=ChangeType.RENAME_FUNCTION,
+                    version_introduced="2.0.0",
+                    description="Rename",
+                    old_name="old_func",
+                    new_name="new_func",
+                )
+            ],
             dry_run=True,
         )
         os.unlink(tmp.name)
@@ -255,9 +277,11 @@ def test_sdk_operations() -> None:
 # 6.  CLI module
 # ═════════════════════════════════════════════════════════════
 
+
 def test_cli() -> None:
     section("6. CLI")
     import sys
+
     cli_src = str(_WORKSPACE / "cli" / "src")
     if cli_src not in sys.path:
         sys.path.insert(0, cli_src)
@@ -268,12 +292,25 @@ def test_cli() -> None:
     check("CLI prog name", parser.prog == "migrator-gen")
 
     # check all commands exist
-    commands = ["create", "update", "migrate", "run", "preview",
-                "rules", "interactive", "export-schema",
-                "validate-rules", "diff-rules", "audit", "auto-upgrade"]
+    commands = [
+        "create",
+        "update",
+        "migrate",
+        "run",
+        "preview",
+        "rules",
+        "interactive",
+        "export-schema",
+        "validate-rules",
+        "diff-rules",
+        "audit",
+        "auto-upgrade",
+    ]
     for cmd in commands:
-        found = any(cmd == a.dest or (hasattr(a, "choices") and a.choices and cmd in a.choices)
-                    for a in parser._actions)
+        any(
+            cmd == a.dest or (hasattr(a, "choices") and a.choices and cmd in a.choices)
+            for a in parser._actions
+        )
         # Actually check subparsers
     sub_actions = [a for a in parser._actions if hasattr(a, "_name_parser_map")]
     available = set()
@@ -287,9 +324,11 @@ def test_cli() -> None:
 # 7.  MCP server
 # ═════════════════════════════════════════════════════════════
 
+
 def test_mcp() -> None:
     section("7. MCP Server")
     import sys
+
     mcp_src = str(_WORKSPACE / "mcp" / "src")
     if mcp_src not in sys.path:
         sys.path.insert(0, mcp_src)
@@ -298,7 +337,7 @@ def test_mcp() -> None:
     server = MigratorGenMCPServer()
     check("MCP server name", server.name == "migrator-gen")
     tools = server.get_tools()
-    check(f"MCP tool count", len(tools) >= 5)
+    check("MCP tool count", len(tools) >= 5)
 
     # call_tool dispatches
     result = server.call_tool("nonexistent", {})
@@ -309,10 +348,14 @@ def test_mcp() -> None:
 # 8.  REST API server
 # ═════════════════════════════════════════════════════════════
 
+
 def test_api() -> None:
     section("8. REST API")
     import importlib.util
-    spec = importlib.util.spec_from_file_location("api_server", str(_WORKSPACE / "backend" / "api" / "src" / "server.py"))
+
+    spec = importlib.util.spec_from_file_location(
+        "api_server", str(_WORKSPACE / "backend" / "api" / "src" / "server.py")
+    )
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
 
@@ -322,8 +365,11 @@ def test_api() -> None:
     v1_routes = [r.path for r in routes if "/api/v1/" in r.path]
     check(f"API versioned routes ({len(v1_routes)})", len(v1_routes) >= 10)
     for path in [
-        "/api/v1/migrate", "/api/v1/preview", "/api/v1/validate",
-        "/api/v1/libraries", "/api/v1/resolve-path",
+        "/api/v1/migrate",
+        "/api/v1/preview",
+        "/api/v1/validate",
+        "/api/v1/libraries",
+        "/api/v1/resolve-path",
     ]:
         check(f"API endpoint {path}", path in v1_routes)
 
@@ -332,10 +378,14 @@ def test_api() -> None:
 # 9.  Worker
 # ═════════════════════════════════════════════════════════════
 
+
 def test_worker() -> None:
     section("9. Worker")
     import importlib.util
-    spec = importlib.util.spec_from_file_location("worker_main", str(_WORKSPACE / "backend" / "worker" / "src" / "main.py"))
+
+    spec = importlib.util.spec_from_file_location(
+        "worker_main", str(_WORKSPACE / "backend" / "worker" / "src" / "main.py")
+    )
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
 
@@ -347,10 +397,20 @@ def test_worker() -> None:
 # 10.  No emojis / AI-native markers
 # ═════════════════════════════════════════════════════════════
 
+
 def test_no_ai_or_emoji_markers() -> None:
     section("10. No AI-generated markers or emojis")
     emoji_chars = set("✅❌🔥✓✗•")
-    skip_dirs = {".git", "__pycache__", ".egg", ".venv", "node_modules", ".mypy_cache", ".pytest_cache", ".github"}
+    skip_dirs = {
+        ".git",
+        "__pycache__",
+        ".egg",
+        ".venv",
+        "node_modules",
+        ".mypy_cache",
+        ".pytest_cache",
+        ".github",
+    }
     found = 0
     for root, dirs, files in os.walk(_WORKSPACE):
         dirs[:] = [d for d in dirs if d not in skip_dirs]
@@ -400,12 +460,14 @@ def test_no_ai_or_emoji_markers() -> None:
 # 11.  pyproject.toml correctness
 # ═════════════════════════════════════════════════════════════
 
+
 def test_pyproject_config() -> None:
     section("11. Project Configuration")
 
     # SDK pyproject
     sdk_pp = _WORKSPACE / "sdk" / "python" / "pyproject.toml"
     import tomllib
+
     with open(sdk_pp, "rb") as fh:
         cfg = tomllib.load(fh)
 
@@ -413,7 +475,10 @@ def test_pyproject_config() -> None:
     check("SDK python >=3.10", cfg["project"]["requires-python"] == ">=3.10")
     check("SDK has local extra", "local" in cfg["project"].get("optional-dependencies", {}))
     check("SDK has remote extra", "remote" in cfg["project"].get("optional-dependencies", {}))
-    check("Build system hatchling", cfg.get("build-system", {}).get("build-backend") == "hatchling.build")
+    check(
+        "Build system hatchling",
+        cfg.get("build-system", {}).get("build-backend") == "hatchling.build",
+    )
 
     # Root pyproject
     root_pp = _WORKSPACE / "pyproject.toml"
@@ -430,11 +495,14 @@ def test_pyproject_config() -> None:
 # 12.  Core tests pass
 # ═════════════════════════════════════════════════════════════
 
+
 def test_core_tests_pass() -> None:
     section("12. Core Tests")
     result = subprocess.run(
         [sys.executable, "-m", "pytest", "tests/unit/core/", "-q"],
-        capture_output=True, text=True, cwd=_WORKSPACE,
+        capture_output=True,
+        text=True,
+        cwd=_WORKSPACE,
     )
     output = result.stdout + result.stderr
     if result.returncode == 0:
@@ -447,6 +515,7 @@ def test_core_tests_pass() -> None:
 # ═════════════════════════════════════════════════════════════
 # Runner
 # ═════════════════════════════════════════════════════════════
+
 
 def run_all():
     print("=" * 60)

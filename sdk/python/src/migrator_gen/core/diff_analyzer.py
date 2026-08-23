@@ -232,26 +232,26 @@ class GitDiffAnalyzer:
             old_info = self.old_ast.get_functions()[removed]
             for added in added_funcs:
                 new_info = self.new_ast.get_functions()[added]
-                if self._similar_signatures(
-                    old_info.get("params", []), new_info.get("params", [])
-                ):
+                if self._similar_signatures(old_info.get("params", []), new_info.get("params", [])):
                     potential_renames.append((removed, added, old_info, new_info))
 
         for old_name, new_name, old_info, new_info in potential_renames:
             if len(old_name) <= 3 or len(new_name) <= 3:
                 continue
-            old_qual = old_info.get("qualifiers", ())
-            new_qual = new_info.get("qualifiers", ())
+            old_info.get("qualifiers", ())
+            new_info.get("qualifiers", ())
             self._potential_rename_pairs.append((old_name, new_name))
-            self.rules.append({
-                "id": self._make_rule_id("rename_function"),
-                "change_type": "rename_function",
-                "version_introduced": "X.Y.Z",
-                "description": f"Renamed function {old_name} to {new_name}",
-                "old_name": old_name,
-                "new_name": new_name,
-                "tags": ["auto-generated", "rename"],
-            })
+            self.rules.append(
+                {
+                    "id": self._make_rule_id("rename_function"),
+                    "change_type": "rename_function",
+                    "version_introduced": "X.Y.Z",
+                    "description": f"Renamed function {old_name} to {new_name}",
+                    "old_name": old_name,
+                    "new_name": new_name,
+                    "tags": ["auto-generated", "rename"],
+                }
+            )
 
         old_classes = set(self.old_ast.get_classes().keys())
         new_classes = set(self.new_ast.get_classes().keys())
@@ -265,15 +265,17 @@ class GitDiffAnalyzer:
                 new_info = self.new_ast.get_classes()[added]
                 if len(old_info.get("methods", [])) == len(new_info.get("methods", [])):
                     self._potential_rename_pairs.append((removed, added))
-                    self.rules.append({
-                        "id": self._make_rule_id("rename_class"),
-                        "change_type": "rename_class",
-                        "version_introduced": "X.Y.Z",
-                        "description": f"Renamed class {removed} to {added}",
-                        "old_name": removed,
-                        "new_name": added,
-                        "tags": ["auto-generated", "rename"],
-                    })
+                    self.rules.append(
+                        {
+                            "id": self._make_rule_id("rename_class"),
+                            "change_type": "rename_class",
+                            "version_introduced": "X.Y.Z",
+                            "description": f"Renamed class {removed} to {added}",
+                            "old_name": removed,
+                            "new_name": added,
+                            "tags": ["auto-generated", "rename"],
+                        }
+                    )
 
     def _detect_signature_changes(self):
         """Detect added, removed, or reordered function arguments."""
@@ -301,55 +303,63 @@ class GitDiffAnalyzer:
 
             for arg in added_args:
                 new_def = new_params[arg].get("default", "None")
-                self.rules.append({
-                    "id": self._make_rule_id("add_argument"),
-                    "change_type": "add_argument",
-                    "version_introduced": "X.Y.Z",
-                    "description": f"Added argument '{arg}' to {fname}()",
-                    "function_name": fname,
-                    "argument_name": arg,
-                    "default_value": new_def,
-                    "tags": ["auto-generated", "signature-change"],
-                })
+                self.rules.append(
+                    {
+                        "id": self._make_rule_id("add_argument"),
+                        "change_type": "add_argument",
+                        "version_introduced": "X.Y.Z",
+                        "description": f"Added argument '{arg}' to {fname}()",
+                        "function_name": fname,
+                        "argument_name": arg,
+                        "default_value": new_def,
+                        "tags": ["auto-generated", "signature-change"],
+                    }
+                )
 
             for arg in removed_args:
-                self.rules.append({
-                    "id": self._make_rule_id("remove_argument"),
-                    "change_type": "remove_argument",
-                    "version_introduced": "X.Y.Z",
-                    "description": f"Removed argument '{arg}' from {fname}()",
-                    "function_name": fname,
-                    "argument_name": arg,
-                    "tags": ["auto-generated", "signature-change"],
-                })
+                self.rules.append(
+                    {
+                        "id": self._make_rule_id("remove_argument"),
+                        "change_type": "remove_argument",
+                        "version_introduced": "X.Y.Z",
+                        "description": f"Removed argument '{arg}' from {fname}()",
+                        "function_name": fname,
+                        "argument_name": arg,
+                        "tags": ["auto-generated", "signature-change"],
+                    }
+                )
 
             for pname, old_def, new_def in changed_defaults:
                 if old_def and new_def:
-                    self.rules.append({
-                        "id": self._make_rule_id("change_argument_default"),
-                        "change_type": "change_argument_default",
-                        "version_introduced": "X.Y.Z",
-                        "description": f"Changed default for '{pname}' in {fname}() from {old_def} to {new_def}",
-                        "argument_name": pname,
-                        "default_value": new_def,
-                        "function_name": fname,
-                        "tags": ["auto-generated", "signature-change"],
-                    })
+                    self.rules.append(
+                        {
+                            "id": self._make_rule_id("change_argument_default"),
+                            "change_type": "change_argument_default",
+                            "version_introduced": "X.Y.Z",
+                            "description": f"Changed default for '{pname}' in {fname}() from {old_def} to {new_def}",
+                            "argument_name": pname,
+                            "default_value": new_def,
+                            "function_name": fname,
+                            "tags": ["auto-generated", "signature-change"],
+                        }
+                    )
 
             if old_names != new_names:
                 reordered = self._detect_reordered_params(
                     list(old_params.keys()), list(new_params.keys())
                 )
                 if reordered:
-                    self.rules.append({
-                        "id": self._make_rule_id("reorder_arguments"),
-                        "change_type": "reorder_arguments",
-                        "version_introduced": "X.Y.Z",
-                        "description": f"Reordered parameters of {fname}()",
-                        "function_name": fname,
-                        "new_order": reordered,
-                        "tags": ["auto-generated", "signature-change"],
-                    })
+                    self.rules.append(
+                        {
+                            "id": self._make_rule_id("reorder_arguments"),
+                            "change_type": "reorder_arguments",
+                            "version_introduced": "X.Y.Z",
+                            "description": f"Reordered parameters of {fname}()",
+                            "function_name": fname,
+                            "new_order": reordered,
+                            "tags": ["auto-generated", "signature-change"],
+                        }
+                    )
 
     def _detect_reordered_params(
         self, old_names: list[str], new_names: list[str]
@@ -359,13 +369,14 @@ class GitDiffAnalyzer:
             return None
 
         old_indices = {n: i for i, n in enumerate(old_names)}
-        new_indices = {n: i for i, n in enumerate(new_names)}
+        {n: i for i, n in enumerate(new_names)}
 
         common_old = [n for n in old_names if n in common]
         common_new = [n for n in new_names if n in common]
 
         reorder_count = sum(
-            1 for i in range(len(common_old) - 1)
+            1
+            for i in range(len(common_old) - 1)
             if old_indices.get(common_old[i], 0) > old_indices.get(common_old[i + 1], 0)
         )
 
@@ -383,7 +394,7 @@ class GitDiffAnalyzer:
         new_modules = set(new_imp.keys())
 
         moved_symbols = []
-        for sym_set in old_modules & new_modules:
+        for _sym_set in old_modules & new_modules:
             pass
 
         for sym in self.old_ast.get_imports():
@@ -395,16 +406,18 @@ class GitDiffAnalyzer:
 
         for sym_name, old_mod, new_mod in moved_symbols:
             if old_mod and new_mod:
-                self.rules.append({
-                    "id": self._make_rule_id("move_to_module"),
-                    "change_type": "move_to_module",
-                    "version_introduced": "X.Y.Z",
-                    "description": f"Moved {sym_name} from {old_mod} to {new_mod}",
-                    "old_name": sym_name,
-                    "source_module": old_mod,
-                    "target_module": new_mod,
-                    "tags": ["auto-generated", "import-change"],
-                })
+                self.rules.append(
+                    {
+                        "id": self._make_rule_id("move_to_module"),
+                        "change_type": "move_to_module",
+                        "version_introduced": "X.Y.Z",
+                        "description": f"Moved {sym_name} from {old_mod} to {new_mod}",
+                        "old_name": sym_name,
+                        "source_module": old_mod,
+                        "target_module": new_mod,
+                        "tags": ["auto-generated", "import-change"],
+                    }
+                )
 
     def _detect_decorator_changes(self):
         """Detect added or removed decorators."""
@@ -421,26 +434,30 @@ class GitDiffAnalyzer:
             removed_decs = old_decs - new_decs
 
             for dec in added_decs:
-                self.rules.append({
-                    "id": self._make_rule_id("add_decorator"),
-                    "change_type": "add_decorator",
-                    "version_introduced": "X.Y.Z",
-                    "description": f"Added @{dec} to {fname}()",
-                    "function_name": fname,
-                    "decorator_name": dec,
-                    "tags": ["auto-generated", "decorator-change"],
-                })
+                self.rules.append(
+                    {
+                        "id": self._make_rule_id("add_decorator"),
+                        "change_type": "add_decorator",
+                        "version_introduced": "X.Y.Z",
+                        "description": f"Added @{dec} to {fname}()",
+                        "function_name": fname,
+                        "decorator_name": dec,
+                        "tags": ["auto-generated", "decorator-change"],
+                    }
+                )
 
             for dec in removed_decs:
-                self.rules.append({
-                    "id": self._make_rule_id("remove_decorator"),
-                    "change_type": "remove_decorator",
-                    "version_introduced": "X.Y.Z",
-                    "description": f"Removed @{dec} from {fname}()",
-                    "function_name": fname,
-                    "decorator_name": dec,
-                    "tags": ["auto-generated", "decorator-change"],
-                })
+                self.rules.append(
+                    {
+                        "id": self._make_rule_id("remove_decorator"),
+                        "change_type": "remove_decorator",
+                        "version_introduced": "X.Y.Z",
+                        "description": f"Removed @{dec} from {fname}()",
+                        "function_name": fname,
+                        "decorator_name": dec,
+                        "tags": ["auto-generated", "decorator-change"],
+                    }
+                )
 
     def _detect_removals(self):
         """Detect removed functions and classes."""
@@ -450,36 +467,38 @@ class GitDiffAnalyzer:
 
         renamed_old = {pair[0] for pair in self._potential_rename_pairs}
         for removed in removed_funcs - renamed_old:
-            self.rules.append({
-                "id": self._make_rule_id("remove_function"),
-                "change_type": "remove_function",
-                "version_introduced": "X.Y.Z",
-                "description": f"Removed function {removed}()",
-                "old_name": removed,
-                "safety": "risky",
-                "reversible": False,
-                "tags": ["auto-generated", "removal"],
-            })
+            self.rules.append(
+                {
+                    "id": self._make_rule_id("remove_function"),
+                    "change_type": "remove_function",
+                    "version_introduced": "X.Y.Z",
+                    "description": f"Removed function {removed}()",
+                    "old_name": removed,
+                    "safety": "risky",
+                    "reversible": False,
+                    "tags": ["auto-generated", "removal"],
+                }
+            )
 
         old_classes = set(self.old_ast.get_classes().keys())
         new_classes = set(self.new_ast.get_classes().keys())
 
         renamed_class_old = {pair[0] for pair in self._potential_rename_pairs}
         for removed in old_classes - new_classes - renamed_class_old:
-            self.rules.append({
-                "id": self._make_rule_id("remove_class"),
-                "change_type": "remove_class",
-                "version_introduced": "X.Y.Z",
-                "description": f"Removed class {removed}",
-                "old_name": removed,
-                "safety": "risky",
-                "reversible": False,
-                "tags": ["auto-generated", "removal"],
-            })
+            self.rules.append(
+                {
+                    "id": self._make_rule_id("remove_class"),
+                    "change_type": "remove_class",
+                    "version_introduced": "X.Y.Z",
+                    "description": f"Removed class {removed}",
+                    "old_name": removed,
+                    "safety": "risky",
+                    "reversible": False,
+                    "tags": ["auto-generated", "removal"],
+                }
+            )
 
-    def _similar_signatures(
-        self, old_params: list[dict], new_params: list[dict]
-    ) -> bool:
+    def _similar_signatures(self, old_params: list[dict], new_params: list[dict]) -> bool:
         if abs(len(old_params) - len(new_params)) > 2:
             return False
 

@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import tempfile
 from pathlib import Path
 from typing import Any
 
-from migrator_gen import SyncMigrationClient, Rule
+from migrator_gen import Rule, SyncMigrationClient
 from migrator_gen.exceptions import SDKError
 
 from ..exceptions import HandlerError
@@ -18,7 +17,6 @@ from ..utils.formatting import (
     format_rule_list,
     format_validation_report,
 )
-from ..utils.validators import validate_file_path, validate_rules_input
 
 log = logging.getLogger("migrator-gen.mcp.handlers")
 
@@ -72,7 +70,9 @@ class ToolHandlers:
             raise HandlerError(str(e)) from e
 
         parts = [f"Preview: {source_version} -> {target_version}"]
-        parts.append(f"Changes: {preview.change_count}, Confidence: {preview.average_confidence:.0%}")
+        parts.append(
+            f"Changes: {preview.change_count}, Confidence: {preview.average_confidence:.0%}"
+        )
         parts.append(f"\n--- Diff ---\n{preview.diff}")
         return "\n".join(parts)
 
@@ -173,7 +173,9 @@ class ToolHandlers:
 
         lines = ["Libraries with migration packs:\n"]
         for name, info in libraries.items():
-            lines.append(f"- **{name}**: {info.get('rule_count', 0)} rules (v{info.get('version', '?')})")
+            lines.append(
+                f"- **{name}**: {info.get('rule_count', 0)} rules (v{info.get('version', '?')})"
+            )
         return "\n".join(lines)
 
     def explain_breaking_changes(self, **kwargs: Any) -> str:
@@ -218,6 +220,7 @@ class ToolHandlers:
             raise HandlerError(str(e)) from e
 
         from packaging.version import Version
+
         direction = "upgrade" if Version(tgt) > Version(src) else "downgrade"
         lines = [f"Migration path: {src} -> {tgt} ({direction})"]
         lines.append(f"Steps: {len(path.steps)}, Rules: {path.rule_count}\n")

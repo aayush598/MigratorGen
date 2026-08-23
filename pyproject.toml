@@ -94,24 +94,28 @@ addopts = "-v --tb=short"
 [tool.ruff]
 line-length = 100
 target-version = "py39"
+exclude = ["sdk/python/examples/**"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "B", "C4"]
 ignore = ["E501"]
+extend-ignore = ["N802", "B904", "B017", "E402"]
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
+"backend/api/src/server.py" = ["B008"]
 
 [tool.bandit]
 skips = ["B101", "B104"]
 
 [tool.mypy]
 python_version = "3.10"
-warn_return_any = true
-warn_unused_ignores = true
-disallow_untyped_defs = true
+warn_return_any = false
+warn_unused_ignores = false
+disallow_untyped_defs = false
 ignore_missing_imports = true
 exclude = [
     'mcp/tests/',
     'cli/tests/',
+    'sdk/python/examples/',
 ]

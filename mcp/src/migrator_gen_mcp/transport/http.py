@@ -13,17 +13,22 @@ log = logging.getLogger("migrator-gen.mcp.http")
 
 def run_http_server(settings: MCPSettings | None = None) -> None:
     from ..server.app import MigratorGenMCPServer
+
     """Run the MCP server over HTTP transport using FastAPI."""
     try:
         import uvicorn
         from fastapi import FastAPI
         from fastapi.middleware.cors import CORSMiddleware
     except ImportError:
-        print("[ERROR] fastapi/uvicorn not installed. Install: pip install fastapi uvicorn", file=sys.stderr)
+        print(
+            "[ERROR] fastapi/uvicorn not installed. Install: pip install fastapi uvicorn",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     if settings is None:
         from ..config.settings import MCPSettings as S
+
         settings = S()
 
     mcp_server = MigratorGenMCPServer()
@@ -50,7 +55,9 @@ def run_http_server(settings: MCPSettings | None = None) -> None:
         ]
 
     @app.post("/tools/{tool_name}/call")
-    async def call_tool(tool_name: str, arguments: dict[str, Any] = {}):
+    async def call_tool(tool_name: str, arguments: dict[str, Any] = None):
+        if arguments is None:
+            arguments = {}
         return {"result": mcp_server.call_tool(tool_name, arguments)}
 
     @app.get("/health")

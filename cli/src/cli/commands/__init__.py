@@ -1,9 +1,10 @@
 """Command registry — maps command names to handler functions."""
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from .audit import cmd_audit, cmd_auto_upgrade
-from .config import cmd_create, cmd_export_schema, cmd_update, cmd_interactive
+from .config import cmd_create, cmd_export_schema, cmd_interactive, cmd_update
 from .migrate import cmd_migrate
 from .preview import cmd_preview
 from .rules import cmd_diff_rules, cmd_rules, cmd_validate_rules

@@ -4,9 +4,8 @@ Includes RFC 7807 Problem Details, Sentry integration, and FastAPI exception han
 """
 
 import logging
-import traceback
-from typing import Any, Dict, Optional, Type
 from datetime import datetime, timezone
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +27,7 @@ class MigratorBaseException(Exception):
     def __init__(
         self,
         message: str,
-        details: Optional[Dict[str, Any]] = None,
+        details: Optional[dict[str, Any]] = None,
         cause: Optional[Exception] = None,
     ):
         super().__init__(message)
@@ -37,7 +36,7 @@ class MigratorBaseException(Exception):
         self.cause = cause
         self.timestamp = datetime.now(timezone.utc)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert exception to dictionary."""
         return {
             "code": self.code,
@@ -47,7 +46,9 @@ class MigratorBaseException(Exception):
             "cause": str(self.cause) if self.cause else None,
         }
 
-    def to_problem_details(self, type_url: str = "https://migrator-gen.example.com/errors") -> Dict[str, Any]:
+    def to_problem_details(
+        self, type_url: str = "https://migrator-gen.example.com/errors"
+    ) -> dict[str, Any]:
         """
         Convert to RFC 7807 Problem Details format.
 
@@ -69,69 +70,81 @@ class MigratorBaseException(Exception):
 
 class ValidationError(MigratorBaseException):
     """Base validation error."""
+
     code = "VALIDATION_ERROR"
     status_code = 400
 
 
 class RuleValidationError(ValidationError):
     """Error validating migration rules."""
+
     code = "RULE_VALIDATION_ERROR"
 
 
 class ParsingError(MigratorBaseException):
     """Error parsing input (changelog, code, etc.)."""
+
     code = "PARSING_ERROR"
     status_code = 422
 
 
 class MigrationError(MigratorBaseException):
     """General migration processing error."""
+
     code = "MIGRATION_ERROR"
 
 
 class FileTooLargeError(MigratorBaseException):
     """Uploaded file exceeds size limit."""
+
     code = "FILE_TOO_LARGE"
     status_code = 413
 
 
 class UnsupportedFileTypeError(MigratorBaseException):
     """File type not supported."""
+
     code = "UNSUPPORTED_FILE"
     status_code = 415
 
 
 class RateLimitError(MigratorBaseException):
     """Rate limit exceeded."""
+
     code = "RATE_LIMIT"
     status_code = 429
 
 
 class AuthenticationError(MigratorBaseException):
     """Authentication failed."""
+
     code = "AUTH_ERROR"
     status_code = 401
 
 
 class DependencyError(MigratorBaseException):
     """Dependency resolution error."""
+
     code = "DEP_ERROR"
 
 
 class TimeoutError(MigratorBaseException):
     """Operation timed out."""
+
     code = "TIMEOUT"
     status_code = 504
 
 
 class ConflictError(MigratorBaseException):
     """Resource conflict (e.g., duplicate rule ID)."""
+
     code = "CONFLICT"
     status_code = 409
 
 
 class NotFoundError(MigratorBaseException):
     """Resource not found."""
+
     code = "NOT_FOUND"
     status_code = 404
 
@@ -215,6 +228,7 @@ class SentryManager:
 
         try:
             import sentry_sdk
+
             with sentry_sdk.configure_scope() as scope:
                 if request_id:
                     scope.set_tag("request_id", request_id)
@@ -246,7 +260,7 @@ def init_sentry(
     SentryManager.get_instance().init(dsn, environment, service_name, release)
 
 
-def global_exception_handler(request: Any, exc: Exception) -> Dict[str, Any]:
+def global_exception_handler(request: Any, exc: Exception) -> dict[str, Any]:
     """
     FastAPI exception handler that returns RFC 7807 Problem Details.
 

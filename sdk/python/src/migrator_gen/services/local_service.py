@@ -17,8 +17,7 @@ def _require(feature: str = "") -> None:
     if not feature:
         feature = "this operation"
     raise EngineError(
-        f"`libcst` is required for {feature}. "
-        'Install it with: pip install "migrator-gen[local]"'
+        f'`libcst` is required for {feature}. Install it with: pip install "migrator-gen[local]"'
     )
 
 
@@ -27,8 +26,7 @@ def _check_libcst() -> None:
         import libcst  # noqa: F401
     except ImportError:
         raise EngineError(
-            '`libcst` is required for local mode. '
-            'Install with: pip install "migrator-gen[local]"'
+            '`libcst` is required for local mode. Install with: pip install "migrator-gen[local]"'
         )
 
 
@@ -51,7 +49,9 @@ class LocalMigrationService:
 
         return CoreRule(
             id=rule.id,
-            change_type=rule.change_type.value if hasattr(rule.change_type, "value") else str(rule.change_type),
+            change_type=rule.change_type.value
+            if hasattr(rule.change_type, "value")
+            else str(rule.change_type),
             version_introduced=rule.version_introduced,
             description=rule.description,
             old_name=rule.old_name,
@@ -175,33 +175,73 @@ class LocalMigrationService:
         analysis = _analyze_source_code(source_code)
         suggestions: list[str] = []
         imports_found = {imp["name"] for imp in analysis.get("imports", [])}
-        if destination_library in imports_found or destination_library.lower() in {i.lower() for i in imports_found}:
+        if destination_library in imports_found or destination_library.lower() in {
+            i.lower() for i in imports_found
+        }:
             suggestions.append(f"Library '{destination_library}' detected")
-        return type("AnalyzeResult", (), {
-            "imports": [type("Imp", (), {"module": i.get("module", ""), "name": i.get("name", ""), "alias": None}) for i in analysis.get("imports", [])],
-            "functions": [type("Fn", (), {"name": i.get("name", ""), "line": i.get("line", 0), "params": i.get("params", []), "decorators": i.get("decorators", [])}) for i in analysis.get("functions", [])],
-            "classes": [type("Cls", (), {"name": i.get("name", ""), "line": i.get("line", 0), "bases": i.get("bases", []), "methods": []}) for i in analysis.get("classes", [])],
-            "suggested_migrations": suggestions,
-        })()
+        return type(
+            "AnalyzeResult",
+            (),
+            {
+                "imports": [
+                    type(
+                        "Imp",
+                        (),
+                        {"module": i.get("module", ""), "name": i.get("name", ""), "alias": None},
+                    )
+                    for i in analysis.get("imports", [])
+                ],
+                "functions": [
+                    type(
+                        "Fn",
+                        (),
+                        {
+                            "name": i.get("name", ""),
+                            "line": i.get("line", 0),
+                            "params": i.get("params", []),
+                            "decorators": i.get("decorators", []),
+                        },
+                    )
+                    for i in analysis.get("functions", [])
+                ],
+                "classes": [
+                    type(
+                        "Cls",
+                        (),
+                        {
+                            "name": i.get("name", ""),
+                            "line": i.get("line", 0),
+                            "bases": i.get("bases", []),
+                            "methods": [],
+                        },
+                    )
+                    for i in analysis.get("classes", [])
+                ],
+                "suggested_migrations": suggestions,
+            },
+        )()
 
     def list_libraries(self) -> dict[str, dict[str, Any]]:
         packs_dir = self._config.migration_packs_dir
         if not packs_dir.exists():
             return {}
-        
+
         result: dict[str, dict[str, Any]] = {}
         for pack_file in packs_dir.glob("*.json"):
             try:
                 import json
+
                 data = json.loads(pack_file.read_text(encoding="utf-8"))
                 lib_name = data.get("library", pack_file.stem)
                 versions = data.get("versions", [])
                 version_details = []
                 for v in versions:
-                    version_details.append({
-                        "version": v.get("version", ""),
-                        "rules": v.get("rules", []),
-                    })
+                    version_details.append(
+                        {
+                            "version": v.get("version", ""),
+                            "rules": v.get("rules", []),
+                        }
+                    )
                 all_rules = []
                 for v in versions:
                     all_rules.extend(v.get("rules", []))
@@ -214,7 +254,7 @@ class LocalMigrationService:
                 }
             except Exception:
                 continue
-        
+
         # Also read user-packs directory
         user_packs_dir = packs_dir.parent / "user-packs"
         if user_packs_dir.exists():
@@ -225,10 +265,12 @@ class LocalMigrationService:
                     versions = data.get("versions", [])
                     version_details = []
                     for v in versions:
-                        version_details.append({
-                            "version": v.get("version", ""),
-                            "rules": v.get("rules", []),
-                        })
+                        version_details.append(
+                            {
+                                "version": v.get("version", ""),
+                                "rules": v.get("rules", []),
+                            }
+                        )
                     all_rules = []
                     for v in versions:
                         all_rules.extend(v.get("rules", []))
@@ -241,10 +283,12 @@ class LocalMigrationService:
                     }
                 except Exception:
                     continue
-        
+
         return result
 
-    def generate_rules_from_diff(self, old_code: str, new_code: str, module: str = "") -> list[m.Rule]:
+    def generate_rules_from_diff(
+        self, old_code: str, new_code: str, module: str = ""
+    ) -> list[m.Rule]:
         try:
             from ..core.diff_analyzer import generate_from_git_diff
         except Exception:
@@ -256,7 +300,9 @@ class LocalMigrationService:
         except Exception as exc:
             raise MigrationParseError(f"Failed to generate rules from diff: {exc}") from exc
 
-    def generate_rules_from_changelog(self, changelog_text: str, library_name: str = "unknown") -> m.VersionChangelog:
+    def generate_rules_from_changelog(
+        self, changelog_text: str, library_name: str = "unknown"
+    ) -> m.VersionChangelog:
         try:
             from ..core.diff_analyzer import generate_from_changelog
         except Exception:
@@ -270,7 +316,9 @@ class LocalMigrationService:
         except Exception as exc:
             raise MigrationParseError(f"Failed to generate rules from changelog: {exc}") from exc
 
-    def resolve_path(self, source_version: str, target_version: str, library_name: str) -> m.ResolvedPath:
+    def resolve_path(
+        self, source_version: str, target_version: str, library_name: str
+    ) -> m.ResolvedPath:
         try:
             from ..core.version_resolver import VersionResolver
         except Exception:
@@ -279,7 +327,9 @@ class LocalMigrationService:
             resolver = VersionResolver(changelogs=[])
             path = resolver.resolve_path(source_version, target_version)
             steps = [m.MigrationStep(source=s[0], target=s[1], rules=[]) for s in path.steps]
-            return m.ResolvedPath(source_version=path.source_version, target_version=path.target_version, steps=steps)
+            return m.ResolvedPath(
+                source_version=path.source_version, target_version=path.target_version, steps=steps
+            )
         except Exception as exc:
             raise MigrationParseError(f"Could not resolve migration path: {exc}") from exc
 
@@ -292,7 +342,13 @@ class LocalMigrationService:
         dry_run: bool = False,
     ) -> m.MigrateResponse:
         source_code = read_file(file_path)
-        result = self.migrate_code(source_code, rules, source_version=source_version, target_version=target_version, dry_run=dry_run)
+        result = self.migrate_code(
+            source_code,
+            rules,
+            source_version=source_version,
+            target_version=target_version,
+            dry_run=dry_run,
+        )
         if not dry_run and result.was_modified:
             backup = Path(file_path).with_suffix(Path(file_path).suffix + ".bak")
             Path(file_path).rename(backup)
@@ -339,10 +395,14 @@ def _parse_changelog_file(file_path: str) -> m.MigrationFile:
     from ..core.models import Rule
     from ..core.models import VersionChangelog as VC
 
-    mf = MF(library=data.get("library", "unknown"), schema_version=data.get("schema_version", "1.0"))
+    mf = MF(
+        library=data.get("library", "unknown"), schema_version=data.get("schema_version", "1.0")
+    )
     for v in data.get("versions", []):
         rules = [Rule(**r) for r in v.get("rules", [])]
-        mf.versions.append(VC(version=v.get("version", "0.0.0"), release_date=v.get("release_date"), rules=rules))
+        mf.versions.append(
+            VC(version=v.get("version", "0.0.0"), release_date=v.get("release_date"), rules=rules)
+        )
     return mf
 
 
@@ -364,14 +424,39 @@ def _analyze_source_code(source_code: str) -> dict:
                 result["imports"].append({"module": module, "name": alias.asname or alias.name})
         elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             params = [a.arg for a in node.args.args]
-            decorators = [d.id for d in node.decorator.list if isinstance(d, ast.Name)] if hasattr(node, "decorator") else []
-            result["functions"].append({"name": node.name, "line": node.lineno or 0, "params": params, "decorators": decorators})
+            decorators = (
+                [d.id for d in node.decorator.list if isinstance(d, ast.Name)]
+                if hasattr(node, "decorator")
+                else []
+            )
+            result["functions"].append(
+                {
+                    "name": node.name,
+                    "line": node.lineno or 0,
+                    "params": params,
+                    "decorators": decorators,
+                }
+            )
         elif isinstance(node, ast.ClassDef):
             methods: list = []
             for item in node.body:
                 if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                    methods.append({"name": item.name, "line": item.lineno or 0, "params": [a.arg for a in item.args.args], "decorators": []})
-            result["classes"].append({"name": node.name, "line": node.lineno or 0, "bases": [b.id for b in node.bases if isinstance(b, ast.Name)], "methods": methods})
+                    methods.append(
+                        {
+                            "name": item.name,
+                            "line": item.lineno or 0,
+                            "params": [a.arg for a in item.args.args],
+                            "decorators": [],
+                        }
+                    )
+            result["classes"].append(
+                {
+                    "name": node.name,
+                    "line": node.lineno or 0,
+                    "bases": [b.id for b in node.bases if isinstance(b, ast.Name)],
+                    "methods": methods,
+                }
+            )
     return result
 
 
@@ -391,7 +476,12 @@ def _convert_validation_report(core_report: Any) -> m.ValidationReport:
             (items.get("info", []), "info"),
         ]:
             for msg in msg_list:
-                entry = {"rule_id": msg.get("rule_id", ""), "message": msg.get("message", ""), "field": msg.get("field"), "severity": severity}
+                entry = {
+                    "rule_id": msg.get("rule_id", ""),
+                    "message": msg.get("message", ""),
+                    "field": msg.get("field"),
+                    "severity": severity,
+                }
                 if severity == "error":
                     errors.append(entry)
                 elif severity == "warning":

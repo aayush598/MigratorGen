@@ -1,10 +1,12 @@
 """
 Exception hierarchy and retry strategies.
 """
-from migrator_gen import SDKError, ConfigurationError, SDKConfig
+
+from migrator_gen import ConfigurationError, SDKError
 from migrator_gen.exceptions import (
-    APIError, AuthenticationError, RateLimitError,
-    TimeoutError, MigrationError, EngineError,
+    APIError,
+    RateLimitError,
+    TimeoutError,
 )
 from migrator_gen.utils import RetryStrategy
 
@@ -41,6 +43,7 @@ retry = RetryStrategy(max_retries=3, base_delay=0.1)
 # Sync usage — retry handles SDK TimeoutError
 attempts = 0
 
+
 def unreliable_call():
     global attempts
     attempts += 1
@@ -48,17 +51,22 @@ def unreliable_call():
         raise TimeoutError("timed out")
     return "success"
 
+
 result = retry.execute(unreliable_call)
 print(f"Retry succeeded after {attempts} attempt(s): {result}")
+
 
 # Custom retryable: catch any exception
 def catch_all(exc):
     return True
 
+
 catch_all_retry = RetryStrategy(max_retries=2, base_delay=0.05, retryable=catch_all)
+
 
 def always_fails():
     raise ValueError("boom")
+
 
 try:
     catch_all_retry.execute(always_fails)
@@ -67,6 +75,7 @@ except ValueError as e:
 
 # Async usage
 import asyncio
+
 
 async def demo_retry_async():
     attempts = 0
@@ -81,7 +90,9 @@ async def demo_retry_async():
     result = await retry.execute_async(unreliable_async)
     print(f"Async retry result: {result}")
 
+
 asyncio.run(demo_retry_async())
+
 
 # Decorate a function with retry
 @retry.decorate

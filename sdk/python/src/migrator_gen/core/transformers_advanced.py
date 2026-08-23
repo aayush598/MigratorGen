@@ -13,7 +13,6 @@ Includes:
 - Decorator Chain Migration
 """
 
-
 import libcst as cst
 
 from .changelog_parser import ChangeType, MigrationRule
@@ -51,6 +50,7 @@ def _get_call_name(func_node) -> str:
 # Sync to Async
 # ---------------------------------------------------------------------------
 
+
 class SyncToAsyncTransformer(cst.CSTTransformer):
     """Converts synchronous functions to async and vice versa."""
 
@@ -75,9 +75,7 @@ class SyncToAsyncTransformer(cst.CSTTransformer):
             return updated_node.with_changes(asynchronous=None)
         return updated_node
 
-    def leave_Call(
-        self, original_node: cst.Call, updated_node: cst.Call
-    ) -> cst.Call:
+    def leave_Call(self, original_node: cst.Call, updated_node: cst.Call) -> cst.Call:
         if isinstance(updated_node.func, cst.Await):
             return updated_node
 
@@ -100,6 +98,7 @@ class SyncToAsyncTransformer(cst.CSTTransformer):
 # Wrap in Context Manager
 # ---------------------------------------------------------------------------
 
+
 class WrapInContextManagerTransformer(cst.CSTTransformer):
     """Wraps function body or expressions in a context manager."""
 
@@ -114,7 +113,9 @@ class WrapInContextManagerTransformer(cst.CSTTransformer):
         if self.rule.function_name and updated_node.name.value != self.rule.function_name:
             return updated_node
 
-        context_manager = self.rule.decorator_name or self.rule.extra.get("context_manager", "contextlib.contextmanager")
+        context_manager = self.rule.decorator_name or self.rule.extra.get(
+            "context_manager", "contextlib.contextmanager"
+        )
 
         decorator_func = cst.Call(
             func=cst.Attribute(
@@ -152,6 +153,7 @@ class WrapInContextManagerTransformer(cst.CSTTransformer):
 # ---------------------------------------------------------------------------
 # Class Split Transformer
 # ---------------------------------------------------------------------------
+
 
 class ClassSplitTransformer(cst.CSTTransformer):
     """Splits a class by extracting methods into a new class."""
@@ -203,6 +205,7 @@ class ClassSplitTransformer(cst.CSTTransformer):
 # ---------------------------------------------------------------------------
 # Module Split Transformer
 # ---------------------------------------------------------------------------
+
 
 class ModuleSplitTransformer(cst.CSTTransformer):
     """Splits a module by extracting symbols to a new module."""
@@ -261,6 +264,7 @@ class ModuleSplitTransformer(cst.CSTTransformer):
 # Change Return Type
 # ---------------------------------------------------------------------------
 
+
 class ChangeReturnTypeTransformer(cst.CSTTransformer):
     """Changes the return type annotation of a function."""
 
@@ -287,8 +291,6 @@ class ChangeReturnTypeTransformer(cst.CSTTransformer):
         self._record(f"Changed return type of {updated_node.name.value}() to {new_return_type}")
         return updated_node.with_changes(returns=return_type_node)
 
-
-
     def _record(self, msg: str):
         self.changes_made.append(msg)
 
@@ -296,6 +298,7 @@ class ChangeReturnTypeTransformer(cst.CSTTransformer):
 # ---------------------------------------------------------------------------
 # Enum Migration
 # ---------------------------------------------------------------------------
+
 
 class EnumMigrationTransformer(cst.CSTTransformer):
     """Migrates enum values: rename, remove, or change values."""
@@ -324,7 +327,7 @@ class EnumMigrationTransformer(cst.CSTTransformer):
 
         name_parts = name.split(".")
         if len(name_parts) == 2 and name_parts[1] == old_value:
-            new_target_name = f"{name_parts[0]}.{new_value}"
+            f"{name_parts[0]}.{new_value}"
             new_name = cst.Attribute(
                 value=cst.Name(name_parts[0]),
                 attr=cst.Name(new_value),
@@ -334,9 +337,7 @@ class EnumMigrationTransformer(cst.CSTTransformer):
         if name == old_value:
             new_name_node = cst.parse_expression(new_value)
             if isinstance(new_name_node, cst.Attribute):
-                return updated_node.with_changes(
-                    targets=[cst.AssignTarget(target=new_name_node)]
-                )
+                return updated_node.with_changes(targets=[cst.AssignTarget(target=new_name_node)])
 
         return updated_node
 
@@ -351,9 +352,7 @@ class EnumMigrationTransformer(cst.CSTTransformer):
 
         if updated_node.target.value == old_value:
             self._record(f"Migrated enum {old_value} -> {new_value}")
-            return updated_node.with_changes(
-                target=cst.Name(new_value)
-            )
+            return updated_node.with_changes(target=cst.Name(new_value))
         return updated_node
 
     def _record(self, msg: str):
@@ -364,6 +363,7 @@ class EnumMigrationTransformer(cst.CSTTransformer):
 # Dataclass Field Change
 # ---------------------------------------------------------------------------
 
+
 class DataclassFieldChangeTransformer(cst.CSTTransformer):
     """Changes dataclass field definitions: rename, retype, add defaults."""
 
@@ -372,9 +372,7 @@ class DataclassFieldChangeTransformer(cst.CSTTransformer):
         self.rule = rule
         self.changes_made: list[str] = []
 
-    def leave_Call(
-        self, original_node: cst.Call, updated_node: cst.Call
-    ) -> cst.Call:
+    def leave_Call(self, original_node: cst.Call, updated_node: cst.Call) -> cst.Call:
         func_name = _get_call_name(updated_node.func)
 
         if func_name != "field" and func_name != "Field":
@@ -384,14 +382,11 @@ class DataclassFieldChangeTransformer(cst.CSTTransformer):
 
         if field_op == "rename":
             old_name = self.rule.old_name
-            new_name = self.rule.new_name
             new_args = []
             changed = False
             for arg in updated_node.args:
                 if arg.keyword and arg.keyword.value == "default":
-                    new_args.append(
-                        arg.with_changes(keyword=cst.Name("default_factory"))
-                    )
+                    new_args.append(arg.with_changes(keyword=cst.Name("default_factory")))
                     changed = True
                 else:
                     new_args.append(arg)
@@ -409,12 +404,11 @@ class DataclassFieldChangeTransformer(cst.CSTTransformer):
 # Pattern Matching Upgrade (match -> case)
 # ---------------------------------------------------------------------------
 
+
 class PatternMatchingUpgradeTransformer(cst.CSTTransformer):
     """Upgrades pattern matching syntax for Python 3.10+."""
 
-    def leave_Match(
-        self, original_node: cst.Match, updated_node: cst.Match
-    ) -> cst.Match:
+    def leave_Match(self, original_node: cst.Match, updated_node: cst.Match) -> cst.Match:
         patterns = self.rule.extra.get("patterns", [])
         if not patterns:
             return updated_node
@@ -571,10 +565,14 @@ class DeadCodeRemovalTransformer(cst.CSTTransformer):
         if isinstance(test, cst.Constant):
             if test.value is True or test.value == 1:
                 self._record("Removed dead if True branch")
-                return cst.FlattenSentinel([
-                    cst.SimpleStatementLine(body=updated_node.body.body),
-                    cst.SimpleStatementLine(body=updated_node.orelse.body) if updated_node.orelse else cst.EmptyLine(),
-                ])
+                return cst.FlattenSentinel(
+                    [
+                        cst.SimpleStatementLine(body=updated_node.body.body),
+                        cst.SimpleStatementLine(body=updated_node.orelse.body)
+                        if updated_node.orelse
+                        else cst.EmptyLine(),
+                    ]
+                )
             elif test.value is False or test.value == 0:
                 self._record("Removed dead if False branch")
                 return cst.RemovalSentinel.Remove
@@ -592,7 +590,9 @@ class ImportCleanupTransformer(cst.CSTTransformer):
         self.used_names = used_names
         self.changes_made: list[str] = []
 
-    def visit_ImportFrom(self, node: cst.ImportFrom) -> cst.BaseStatement | cst.FlattenSentinel | None:
+    def visit_ImportFrom(
+        self, node: cst.ImportFrom
+    ) -> cst.BaseStatement | cst.FlattenSentinel | None:
         if node.module is None:
             return node
 

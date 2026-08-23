@@ -256,9 +256,7 @@ class TransactionalMigrationEngine:
 
         for rule in sorted_rules:
             if not rule.reversible and not rule.idempotent_safe:
-                if IdempotencyChecker.check_rule_idempotency(
-                    rule, current_code, get_transformer
-                ):
+                if IdempotencyChecker.check_rule_idempotency(rule, current_code, get_transformer):
                     result.rule_results.append(
                         RuleApplicationResult(
                             rule_id=rule.id,
@@ -282,9 +280,7 @@ class TransactionalMigrationEngine:
                 if self.interactive_approval and safety != SafetyLevel.SAFE:
                     approved = self._prompt_approval(rule, changes)
                     if not approved:
-                        result.errors.append(
-                            f"Rule '{rule.id}' not approved by user"
-                        )
+                        result.errors.append(f"Rule '{rule.id}' not approved by user")
                         result.rule_results.append(
                             RuleApplicationResult(
                                 rule_id=rule.id,
@@ -382,22 +378,16 @@ class TransactionalMigrationEngine:
         python_files = list(directory.rglob("*.py"))
         filtered_files = []
         for f in python_files:
-            excluded = any(
-                fnmatch.fnmatch(str(f), pattern) for pattern in exclude_patterns
-            )
+            excluded = any(fnmatch.fnmatch(str(f), pattern) for pattern in exclude_patterns)
             if not excluded:
                 filtered_files.append(f)
 
         report.files_processed = len(filtered_files)
 
-        use_transaction = (
-            transactional if transactional is not None else self.transactional
-        )
+        use_transaction = transactional if transactional is not None else self.transactional
 
         if use_transaction and not dry_run:
-            tx = self._begin_transaction(
-                path.source_version, path.target_version, dry_run
-            )
+            tx = self._begin_transaction(path.source_version, path.target_version, dry_run)
             tx.rule_fingerprint = IdempotencyChecker.compute_fingerprint(path.rules)
 
             try:
@@ -422,7 +412,9 @@ class TransactionalMigrationEngine:
                                     file_path=str(file_path),
                                     change_type=r.rule_id,
                                     confidence=r.confidence,
-                                    safety=SafetyLevel(r.safety.value) if isinstance(r.safety, SafetyLevel) else SafetyLevel(r.safety),
+                                    safety=SafetyLevel(r.safety.value)
+                                    if isinstance(r.safety, SafetyLevel)
+                                    else SafetyLevel(r.safety),
                                 )
                                 for r in result.rule_results
                                 if r.success and r.changes_made
@@ -512,9 +504,8 @@ class TransactionalMigrationEngine:
         if result.changes:
             conf = result.average_confidence
             conf_str = f" (confidence: {conf:.0%})" if conf else ""
-            changes_summary = (
-                f"\nChanges ({len(result.changes)} rule(s){conf_str}):\n"
-                + "\n".join(f"  - {c}" for c in result.changes)
+            changes_summary = f"\nChanges ({len(result.changes)} rule(s){conf_str}):\n" + "\n".join(
+                f"  - {c}" for c in result.changes
             )
             preview = changes_summary + "\n\n" + preview
 
@@ -551,9 +542,7 @@ class TransactionalMigrationEngine:
 
         return len(issues) == 0 or all("Warning" in i for i in issues), issues
 
-    def _apply_rule(
-        self, code: str, rule: MigrationRule
-    ) -> tuple[str, list[str]]:
+    def _apply_rule(self, code: str, rule: MigrationRule) -> tuple[str, list[str]]:
         transformer = get_transformer(rule)
         if transformer is None:
             return code, [f"[SKIP] No transformer for {rule.change_type.value}"]
@@ -577,9 +566,7 @@ class TransactionalMigrationEngine:
         except Exception:
             return sorted(rules, key=lambda r: r.priority)
 
-    def _estimate_confidence(
-        self, rule: MigrationRule, code: str, changes: list[str]
-    ) -> float:
+    def _estimate_confidence(self, rule: MigrationRule, code: str, changes: list[str]) -> float:
         confidence_map = {
             "high": 0.95,
             "medium": 0.7,
@@ -595,9 +582,7 @@ class TransactionalMigrationEngine:
 
         return min(base, 1.0)
 
-    def _classify_safety(
-        self, rule: MigrationRule, changes: list[str]
-    ) -> SafetyLevel:
+    def _classify_safety(self, rule: MigrationRule, changes: list[str]) -> SafetyLevel:
         if rule.safety == "risky":
             return SafetyLevel.RISKY
         if rule.safety == "review_required":
@@ -614,9 +599,7 @@ class TransactionalMigrationEngine:
 
         return SafetyLevel.SAFE
 
-    def _prompt_approval(
-        self, rule: MigrationRule, changes: list[str]
-    ) -> bool:
+    def _prompt_approval(self, rule: MigrationRule, changes: list[str]) -> bool:
         print(f"\n[APPROVAL REQUIRED] Rule: {rule.description}")
         print(f"  Type: {rule.change_type.value}")
         print(f"  Safety: {rule.safety}")
@@ -717,9 +700,7 @@ class TransactionalMigrationEngine:
                         tofile=f"{file_rel} (current)",
                     )
                 )
-                issues.append(
-                    f"File changed unexpectedly: {file_rel}\n" + "".join(diff)
-                )
+                issues.append(f"File changed unexpectedly: {file_rel}\n" + "".join(diff))
 
         return len(issues) == 0, issues
 

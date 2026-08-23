@@ -5,19 +5,30 @@ Provides request, migration, cache, and infrastructure metrics.
 
 from __future__ import annotations
 
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any, Dict, Generator, Optional
+from typing import Any
 
 try:
-    from prometheus_client import Counter, Histogram, Gauge, REGISTRY, generate_latest, CONTENT_TYPE_LATEST
+    from prometheus_client import (
+        CONTENT_TYPE_LATEST,
+        REGISTRY,
+        Counter,
+        Gauge,
+        Histogram,
+        generate_latest,
+    )
+
     PROMETHEUS_AVAILABLE = True
 except ImportError:
     PROMETHEUS_AVAILABLE = False
     Counter = Histogram = Gauge = None  # type: ignore
     REGISTRY = None  # type: ignore
     CONTENT_TYPE_LATEST = "text/plain"
+
     def generate_latest(*args, **kwargs):  # type: ignore
         return b""
+
 
 def _make_counter(name: str, documentation: str, labelnames: list[str]) -> Any:
     if PROMETHEUS_AVAILABLE and Counter:
@@ -25,7 +36,9 @@ def _make_counter(name: str, documentation: str, labelnames: list[str]) -> Any:
     return None
 
 
-def _make_histogram(name: str, documentation: str, labelnames: list[str], buckets: tuple = None) -> Any:
+def _make_histogram(
+    name: str, documentation: str, labelnames: list[str], buckets: tuple = None
+) -> Any:
     if PROMETHEUS_AVAILABLE and Histogram:
         return Histogram(name, documentation, labelnames, buckets=buckets or ())
     return None
@@ -244,6 +257,7 @@ class MetricsCollector:
         """Context manager to track migration duration."""
         self.record_migration_start(change_type)
         import time
+
         start = time.perf_counter()
         try:
             yield
@@ -262,11 +276,14 @@ class MetricsCollector:
 def normalize_endpoint(endpoint: str) -> str:
     """Normalize endpoint paths for metric labels."""
     import re
+
     endpoint = re.sub(
-        r'/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}',
-        '/{id}', endpoint, flags=re.IGNORECASE,
+        r"/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
+        "/{id}",
+        endpoint,
+        flags=re.IGNORECASE,
     )
-    endpoint = re.sub(r'/\d+', '/{id}', endpoint)
+    endpoint = re.sub(r"/\d+", "/{id}", endpoint)
     return endpoint
 
 
@@ -274,7 +291,6 @@ def setup_metrics(app: Any) -> None:
     """Attach metrics endpoint to a FastAPI application."""
     if not PROMETHEUS_AVAILABLE:
         return
-    from fastapi import FastAPI
     from fastapi.responses import Response
 
     @app.get("/metrics")
