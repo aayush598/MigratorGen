@@ -1,6 +1,6 @@
 [project]
 name = "migrator-gen"
-version = "1.0.0"
+version = "1.0.1"
 description = "Python SDK for MigratorGen — automatically migrate Python code across library versions"
 readme = "README.md"
 requires-python = ">=3.10"

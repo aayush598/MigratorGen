@@ -52,14 +52,10 @@ class MigrationClient:
         elif self._client_mode == "remote":
             await self._init_remote()
         else:
-            if self._config.base_url:
-                log.debug("Auto-detected remote mode")
-                self._client_mode = "remote"
-                await self._init_remote()
-            else:
-                log.debug("Auto-detected local mode")
-                self._client_mode = "local"
-                self._init_local()
+            # mode="auto": default to local. Remote requires explicit mode="remote".
+            log.debug("Auto-detected local mode")
+            self._client_mode = "local"
+            self._init_local()
 
     def _init_local(self) -> None:
         from ..services import LocalMigrationService

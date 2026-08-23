@@ -11,6 +11,7 @@ from .changelog_parser import ChangeType, MigrationRule
 
 def validate_rules_from_file(rules_file_path: str) -> ValidationReport:
     """Load a rules file and validate all rules, returning a ValidationReport."""
+    report = ValidationReport()
     path = Path(rules_file_path)
     raw = path.read_text(encoding="utf-8")
     if path.suffix in (".yaml", ".yml"):
@@ -25,7 +26,20 @@ def validate_rules_from_file(rules_file_path: str) -> ValidationReport:
     rules: list[MigrationRule] = []
     for v in data.get("versions", []):
         for r in v.get("rules", []):
-            rules.append(MigrationRule(**r))
+            try:
+                rules.append(MigrationRule(**r))
+            except Exception as exc:
+                report.errors.append(
+                    ValidationMessage(
+                        rule_id=r.get("id", "unknown"),
+                        message=f"Invalid rule: {exc}",
+                        field=None,
+                    )
+                )
+
+    if report.errors:
+        report.valid = False
+        return report
 
     validator = RuleValidator()
     return validator.validate_rules(rules)
@@ -124,14 +138,16 @@ class RenameFunctionValidator(BaseRuleValidator):
     def _validate_identifier(
         self, value: str | None, field: str, rule: MigrationRule, report: ValidationReport
     ):
-        if value and not value.replace("_", "").isalnum():
-            report.errors.append(
-                ValidationMessage(
-                    rule_id=rule.id,
-                    message=f"Invalid Python identifier in {field}: {value}",
-                    field=field,
+        if value:
+            parts = value.split(".")
+            if not all(p.replace("_", "").isalnum() for p in parts if p):
+                report.errors.append(
+                    ValidationMessage(
+                        rule_id=rule.id,
+                        message=f"Invalid Python identifier in {field}: {value}",
+                        field=field,
+                    )
                 )
-            )
 
 
 class AddArgumentValidator(BaseRuleValidator):

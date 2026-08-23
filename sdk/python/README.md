@@ -24,25 +24,16 @@ pip install migrator-gen
 For the full local engine (LibCST-based transformations):
 
 ```bash
-pip install migrator-gen[local]
-```
-
-For remote API access:
-
-```bash
-pip install migrator-gen[remote]
+pip install "migrator-gen[local]"
 ```
 
 ## Quick Start
-
-### Local Engine
 
 ```python
 from migrator_gen import SyncMigrationClient, Rule, ChangeType
 
 client = SyncMigrationClient()
 
-# Define a migration rule
 rule = Rule(
     id="REQ-001",
     change_type=ChangeType.RENAME_FUNCTION,
@@ -52,7 +43,6 @@ rule = Rule(
     version_introduced="2.0.0",
 )
 
-# Migrate code
 result = client.migrate_code(
     source_code="import requests\nresp = requests.get(url)",
     rules=[rule],
@@ -60,32 +50,18 @@ result = client.migrate_code(
 )
 
 print(result.transformed_code)
-# import httpx
+# import requests
 # resp = httpx.get(url)
 ```
 
-### Remote API
+## Preview Changes (Dry Run)
 
 ```python
-from migrator_gen import MigrationClient
-
-async with MigrationClient(base_url="https://api.migratorgen.dev") as client:
-    result = await client.migrate(
-        source_code=open("my_app.py").read(),
-        rules=open("migration-pack.json").read(),
-        target_version="2.0.0",
-    )
-    print(result.transformed_code)
+preview = client.preview_migration(source_code, [rule])
+print(preview.diff)  # Unified diff output
 ```
 
-### Preview Changes (Dry Run)
-
-```python
-preview = client.preview_migration(source_code, rules)
-print(preview)  # Unified diff output
-```
-
-### Validate Rules
+## Validate Rules
 
 ```python
 report = client.validate_rules("migration-pack.json")
@@ -93,7 +69,33 @@ if report.valid:
     print("All rules are valid")
 else:
     for error in report.errors:
-        print(f"Error: {error}")
+        print(f"Error: {error['message']}")
+```
+
+## Async Client
+
+```python
+import asyncio
+from migrator_gen import MigrationClient, Rule, ChangeType
+
+async def main():
+    async with MigrationClient() as client:
+        rule = Rule(
+            id="REQ-001",
+            change_type=ChangeType.RENAME_FUNCTION,
+            description="requests.get renamed to httpx.get",
+            old_name="requests.get",
+            new_name="httpx.get",
+            version_introduced="2.0.0",
+        )
+        result = await client.migrate_code(
+            source_code="import requests\nresp = requests.get(url)",
+            rules=[rule],
+            target_version="2.0.0",
+        )
+        print(result.transformed_code)
+
+asyncio.run(main())
 ```
 
 ## Rule Structure
@@ -135,14 +137,17 @@ See `migrator_gen.core.constants.ChangeType` for the full list.
 ## Configuration
 
 ```python
-from migrator_gen import SDKConfig
+from migrator_gen import SyncMigrationClient
 
-config = SDKConfig(
-    base_url="https://api.migratorgen.dev",
-    timeout=30,
-    max_retries=3,
+# Use defaults (local mode)
+client = SyncMigrationClient()
+
+# Custom configuration
+client = SyncMigrationClient(
+    mode="local",
+    timeout=60,
+    max_retries=5,
 )
-client = SyncMigrationClient(config=config)
 ```
 
 ## Development

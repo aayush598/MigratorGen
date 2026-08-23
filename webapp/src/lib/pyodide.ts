@@ -59,7 +59,7 @@ type PyodideModule = { loadPyodide: (opts?: Record<string, unknown>) => Promise<
 let enginePromise: Promise<PyodideInterface> | null = null;
 
 const SITE_PACKAGES = "/lib/python3.13/site-packages";
-const ENGINE_VERSION = "1.0.0";
+const ENGINE_VERSION = "1.0.1";
 
 async function writeWebApiFile(pyodide: PyodideInterface): Promise<void> {
   const webApiPath = path.resolve(process.cwd(), "python", "web_api.py");
