@@ -14,23 +14,21 @@ COPY pyproject.toml ./
 COPY requirements.txt ./
 COPY sdk/python/ sdk/python/
 
-RUN uv sync \
+RUN uv pip install \
     fastapi \
-    uvicorn[standard] \
+    "uvicorn[standard]" \
     httpx \
     pydantic \
     pydantic-settings \
     python-multipart \
     aiofiles \
     slowapi \
-    --no-install-project \
-    --no-dev \
-    --no-editable
+    --system
 
 COPY . .
 
-RUN uv sync --no-install-project --no-dev --no-editable && \
-    uv pip install -e "sdk/python[all]" --no-editable
+RUN uv pip install -e ".[api]" --system && \
+    uv pip install -e "sdk/python[all]" --system
 
 EXPOSE 8000
 
