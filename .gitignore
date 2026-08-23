@@ -62,6 +62,9 @@ generated_migrator_md/
 webapp/auth.db
 webapp/data/user-packs/*.json
 
+# Synced engine files (copied from sdk/python at build time)
+webapp/python/engine/
+
 # Vercel
 .vercel/
 

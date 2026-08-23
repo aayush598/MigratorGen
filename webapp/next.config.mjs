@@ -10,7 +10,6 @@ const nextConfig = {
   outputFileTracingIncludes: {
     "/api/v1/**": [
       path.join(__dirname, "python", "**", "*.py"),
-      path.join(__dirname, "..", "sdk", "python", "src", "migrator_gen", "**", "*.py"),
       path.join(__dirname, "..", "migration-packs", "*.json"),
     ],
   },

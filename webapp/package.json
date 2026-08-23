@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "sync-engine": "node scripts/sync-engine.mjs",
+    "prebuild": "node scripts/sync-engine.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
