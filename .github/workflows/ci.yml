@@ -24,7 +24,7 @@ jobs:
       - name: Ruff check
         run: source .venv/bin/activate && ruff check --extend-ignore N802,N806,N817,N818,B904,B017,E402,E741,UP035 --extend-exclude sdk/python/examples/ cli/ mcp/ sdk/python/ backend/ shared/ tests/
       - name: Ruff format check
-        run: source .venv/bin/activate && ruff format --check --exclude '\.md$' .
+        run: source .venv/bin/activate && ruff format --check .
 
   typecheck:
     runs-on: ubuntu-latest
