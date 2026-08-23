@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
 
 const protectedPaths = ["/dashboard", "/migrations", "/libraries", "/api-keys", "/settings", "/billing", "/rules"];
-const authPaths = ["/auth/login", "/auth/register"];
+const authPaths = ["/auth/login", "/auth/register", "/auth/forgot-password", "/auth/reset-password"];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
