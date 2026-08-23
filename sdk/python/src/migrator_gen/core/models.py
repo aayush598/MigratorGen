@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -133,7 +133,7 @@ class MigrationJob(BaseModel):
     status: MigrationStatus
     source_version: str = ""
     target_version: str = ""
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     completed_at: datetime | None = None
     error_message: str | None = None
     result: MigrateResponse | None = None
@@ -170,7 +170,7 @@ class MigrationReport(BaseModel):
 class HealthStatus(BaseModel):
     status: str = "healthy"
     version: str = "0.1.0"
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 @dataclass

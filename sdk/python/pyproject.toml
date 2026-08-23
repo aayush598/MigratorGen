@@ -1,12 +1,12 @@
 [project]
 name = "migrator-gen"
-version = "0.2.0"
+version = "1.0.0"
 description = "Python SDK for MigratorGen — automatically migrate Python code across library versions"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
-    {name = "MigratorGen", email = "dev@migrator-gen.io"},
+    {name = "Aayush Gid", email = "aayushgid598@gmail.com"},
 ]
 keywords = ["migrator-gen", "migration", "codemod", "libcst", "sdk", "ast"]
 classifiers = [
@@ -41,9 +41,10 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/migrator-gen/migrator-gen"
-Repository = "https://github.com/migrator-gen/migrator-gen"
-Documentation = "https://migrator-gen.readthedocs.io"
+Homepage = "https://github.com/aayush598/MigratorGen"
+Repository = "https://github.com/aayush598/MigratorGen"
+Issues = "https://github.com/aayush598/MigratorGen/issues"
+Documentation = "https://github.com/aayush598/MigratorGen#readme"
 
 [build-system]
 requires = ["hatchling"]
