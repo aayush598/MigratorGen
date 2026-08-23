@@ -356,11 +356,11 @@ from migrator_gen.core.migration_engine import TransactionalMigrationEngine
 
 # 1. Parse
 parser = ChangelogParser()
-changelogs = parser.parse(Path('examples/mylib_changelog.json').read_text())
+changelogs = parser.parse(Path("examples/mylib_changelog.json").read_text())
 
 # 2. Resolve path
 resolver = VersionResolver(changelogs)
-path = resolver.resolve_path('1.0.0', '3.0.0')
+path = resolver.resolve_path("1.0.0", "3.0.0")
 
 # 3. Migrate
 engine = TransactionalMigrationEngine()
@@ -506,6 +506,7 @@ Checks include:
 `IdempotencyChecker` verifies rules produce identical output when applied twice:
 ```python
 from migrator_gen.core.validation import IdempotencyChecker
+
 is_safe = IdempotencyChecker.check_rule_idempotency(rule, code, None)
 ```
 
@@ -548,8 +549,7 @@ rules = analyzer.analyze()
 from migrator_gen.core.diff_analyzer import ChangelogToRulesConverter
 
 converter = ChangelogToRulesConverter(
-    text="renamed Client to APIClient\nadded timeout parameter",
-    version="2.0.0"
+    text="renamed Client to APIClient\nadded timeout parameter", version="2.0.0"
 )
 rules = converter.convert()
 ```
@@ -579,7 +579,7 @@ from pathlib import Path
 from migrator_gen.core.parallel_engine import ParallelMigrationEngine
 
 engine = ParallelMigrationEngine(max_workers=4)
-report = engine.migrate_directory(Path('./myproject/'), rules)
+report = engine.migrate_directory(Path("./myproject/"), rules)
 print(report.summary())
 ```
 
