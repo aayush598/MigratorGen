@@ -30,7 +30,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     LOG_LEVEL=INFO \
     UV_LINK_MODE=copy
 
-RUN useradd --uid 1000 --gid 1000 --create-home appuser
+RUN groupadd -g 1000 appgroup && useradd --uid 1000 --gid 1000 --create-home appuser
 
 WORKDIR /app
 

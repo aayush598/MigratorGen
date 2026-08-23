@@ -12,7 +12,7 @@ import {
   Wand2,
   Zap,
 } from "lucide-react";
-import { useUser, useClerk } from "@clerk/nextjs";
+import { useAuth } from "@/lib/clerk-utils";
 
 type DiffKind = "context" | "changed";
 type DiffLine = { kind: DiffKind; before: string; after: string };
@@ -373,8 +373,7 @@ const VERSION_NODES = [
 ];
 
 export default function Home() {
-  const { user } = useUser();
-  const { signOut } = useClerk();
+  const { user, signOut } = useAuth();
   const [diffVisible, setDiffVisible] = useState<number[]>([]);
   const [previewActive, setPreviewActive] = useState(false);
   const [applyState, setApplyState] = useState<"idle" | "applying" | "applied">("idle");

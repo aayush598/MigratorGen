@@ -3,7 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useState, useEffect, useCallback, type ReactNode } from "react";
-import { useUser, useClerk } from "@clerk/nextjs";
+import { useAuth } from "@/lib/clerk-utils";
 import { Toaster } from "@/components/ui/toaster";
 import { hydrateMigrationStore } from "@/stores/migration-store";
 
@@ -72,8 +72,7 @@ function NavIcon({ name }: { name: string }) {
 export default function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user } = useUser();
-  const { signOut } = useClerk();
+  const { user, signOut } = useAuth();
 
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);

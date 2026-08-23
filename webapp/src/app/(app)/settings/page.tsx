@@ -1,11 +1,10 @@
 "use client";
 
-import { useUser, useClerk } from "@clerk/nextjs";
+import { useAuth } from "@/lib/clerk-utils";
 import { useRouter } from "next/navigation";
 
 export default function SettingsPage() {
-  const { user } = useUser();
-  const { signOut } = useClerk();
+  const { user, signOut } = useAuth();
   const router = useRouter();
 
   const handleSignOut = () => {
