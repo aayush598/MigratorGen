@@ -15,12 +15,14 @@ import {
   Trash2,
   Upload,
   Undo2,
+  RefreshCw,
 } from "lucide-react";
 import { client } from "@/lib/api-client";
 import type { SafetyLevel } from "@/schemas";
 import { Card, Badge } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
+import { UpdatePackModal } from "@/components/update-pack-modal";
 import { toast } from "@/stores/ui-store";
 
 const safetyBadge: Record<string, { tone: "success" | "warning" | "danger"; icon: React.ElementType }> = {
@@ -38,6 +40,7 @@ export default function LibraryDetailPage({ params }: { params: { id: string } }
   const [togglingPublish, setTogglingPublish] = useState(false);
   const [loadingForEdit, setLoadingForEdit] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [updateOpen, setUpdateOpen] = useState(false);
 
   const { data: library, isLoading, error, mutate } = useSWR(
     `library:${name}`,
@@ -179,8 +182,8 @@ export default function LibraryDetailPage({ params }: { params: { id: string } }
                 <Button variant="secondary" size="sm" onClick={() => handleExport(false)} loading={exporting}>
                   <Download className="h-3.5 w-3.5" /> Export
                 </Button>
-                <Button variant="secondary" size="sm" onClick={() => handleExport(true)} loading={exporting}>
-                  <Download className="h-3.5 w-3.5" /> Update Only
+                <Button variant="secondary" size="sm" onClick={() => setUpdateOpen(true)}>
+                  <RefreshCw className="h-3.5 w-3.5" /> Update Only
                 </Button>
                 <Button variant="secondary" size="sm" onClick={handleTogglePublish} loading={togglingPublish}>
                   {packRecord.is_published ? (
@@ -313,6 +316,16 @@ export default function LibraryDetailPage({ params }: { params: { id: string } }
           </Button>
         </div>
       </Modal>
+
+      {isCustom && packRecord && (
+        <UpdatePackModal
+          open={updateOpen}
+          onClose={() => setUpdateOpen(false)}
+          packId={packRecord.id}
+          packName={packRecord.name || name}
+          libraryName={name}
+        />
+      )}
     </div>
   );
 }

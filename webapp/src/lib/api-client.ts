@@ -245,6 +245,10 @@ export class MigratorGenClient {
       a.remove();
       URL.revokeObjectURL(objectUrl);
     },
+    getPackContent: async (id: string): Promise<Record<string, unknown>> => {
+      const url = `${this.baseUrl}/user-packs/${encodeURIComponent(id)}/content`;
+      return this.req<Record<string, unknown>>(url);
+    },
   };
 
   readonly keys = {
