@@ -36,29 +36,73 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="w-full max-w-md bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-        <h1 className="text-2xl font-bold text-gray-900 text-center mb-6">Create account</h1>
-        {error && <p className="text-red-600 text-sm text-center mb-4">{error}</p>}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500" required />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500" required minLength={8} />
-          </div>
-          <button type="submit" disabled={loading} className="w-full bg-brand-600 text-white py-2 rounded-lg font-medium hover:bg-brand-700 disabled:opacity-50">
-            {loading ? "Creating account..." : "Create account"}
-          </button>
-        </form>
-        <p className="mt-4 text-center text-sm text-gray-600">
-          Already have an account? <Link href="/auth/login" className="text-brand-600 hover:text-brand-700">Sign in</Link>
+    <div className="mesh-gradient min-h-screen flex items-center justify-center px-6">
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-8">
+          <Link href="/" className="inline-flex items-center gap-2.5 mb-6">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
+              <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182" />
+              </svg>
+            </span>
+            <span className="text-lg font-semibold text-zinc-100">MigratorGen</span>
+          </Link>
+          <h1 className="text-2xl font-bold text-zinc-100">Create account</h1>
+          <p className="text-sm text-zinc-500 mt-1">Start migrating Python code</p>
+        </div>
+
+        <div className="bg-[#18181b] rounded-xl border border-white/10 p-6">
+          {error && (
+            <div className="mb-4 rounded-lg bg-red-500/10 border border-red-500/20 px-3 py-2 text-sm text-red-400">
+              {error}
+            </div>
+          )}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-[13px] font-medium text-zinc-400 mb-1.5">Name</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-[#09090b] border border-white/10 rounded-lg text-[13px] text-zinc-100 placeholder-zinc-600 focus:ring-1 focus:ring-blue-500/30 focus:border-blue-500 outline-none transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-[13px] font-medium text-zinc-400 mb-1.5">Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-[#09090b] border border-white/10 rounded-lg text-[13px] text-zinc-100 placeholder-zinc-600 focus:ring-1 focus:ring-blue-500/30 focus:border-blue-500 outline-none transition-all"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-[13px] font-medium text-zinc-400 mb-1.5">Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-[#09090b] border border-white/10 rounded-lg text-[13px] text-zinc-100 placeholder-zinc-600 focus:ring-1 focus:ring-blue-500/30 focus:border-blue-500 outline-none transition-all"
+                required
+                minLength={8}
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-blue-600 text-white py-2.5 rounded-lg text-[13px] font-semibold hover:bg-blue-700 disabled:opacity-50 transition-all btn-press"
+            >
+              {loading ? "Creating account..." : "Create account"}
+            </button>
+          </form>
+        </div>
+
+        <p className="mt-4 text-center text-[13px] text-zinc-500">
+          Already have an account?{" "}
+          <Link href="/auth/login" className="text-blue-400 hover:text-blue-300 font-medium transition-colors">
+            Sign in
+          </Link>
         </p>
       </div>
     </div>
