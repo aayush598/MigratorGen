@@ -1,17 +1,11 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
-
-export type SessionContext = {
-  userId: string;
-  tenantId: string;
-} | null;
+import { auth } from "@clerk/nextjs/server";
 
 export async function requireSession(): Promise<
   { ok: true; session: { userId: string; tenantId: string } } | { ok: false; response: NextResponse }
 > {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) {
+  const { userId } = await auth();
+  if (!userId) {
     return {
       ok: false,
       response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
@@ -19,14 +13,14 @@ export async function requireSession(): Promise<
   }
   return {
     ok: true,
-    session: { userId: session.user.id, tenantId: session.session.userId },
+    session: { userId, tenantId: userId },
   };
 }
 
-export async function getSessionOptional(): Promise<SessionContext> {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return null;
-  return { userId: session.user.id, tenantId: session.session.userId };
+export async function getSessionOptional(): Promise<{ userId: string; tenantId: string } | null> {
+  const { userId } = await auth();
+  if (!userId) return null;
+  return { userId, tenantId: userId };
 }
 
 export function errorResponse(err: unknown): NextResponse {

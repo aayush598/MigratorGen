@@ -3,7 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useState, useEffect, useCallback, type ReactNode } from "react";
-import { useSession, signOut } from "@/lib/auth-client";
+import { useUser, useClerk } from "@clerk/nextjs";
 import { Toaster } from "@/components/ui/toaster";
 import { hydrateMigrationStore } from "@/stores/migration-store";
 
@@ -72,7 +72,8 @@ function NavIcon({ name }: { name: string }) {
 export default function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { data: session } = useSession();
+  const { user } = useUser();
+  const { signOut } = useClerk();
 
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -159,7 +160,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     }),
   ];
 
-  const email = session?.user?.email ?? "";
+  const email = user?.primaryEmailAddress?.emailAddress ?? "";
   const avatarLetter = email ? email.charAt(0).toUpperCase() : "?";
 
   const renderNavLinks = (isCollapsed: boolean) => (
@@ -216,7 +217,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   const renderUserSection = (isCollapsed: boolean) => (
     <div className={`border-t border-slate-100 px-3 py-3 ${isCollapsed ? "flex flex-col items-center gap-2" : ""}`}>
-      {mounted && session?.user ? (
+      {mounted && user ? (
         <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3 px-1"} py-1`}>
           <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[11px] font-semibold text-slate-600">
             {avatarLetter}

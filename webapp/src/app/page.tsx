@@ -12,7 +12,7 @@ import {
   Wand2,
   Zap,
 } from "lucide-react";
-import { useSession, signOut } from "@/lib/auth-client";
+import { useUser, useClerk } from "@clerk/nextjs";
 
 type DiffKind = "context" | "changed";
 type DiffLine = { kind: DiffKind; before: string; after: string };
@@ -373,7 +373,8 @@ const VERSION_NODES = [
 ];
 
 export default function Home() {
-  const { data: session } = useSession();
+  const { user } = useUser();
+  const { signOut } = useClerk();
   const [diffVisible, setDiffVisible] = useState<number[]>([]);
   const [previewActive, setPreviewActive] = useState(false);
   const [applyState, setApplyState] = useState<"idle" | "applying" | "applied">("idle");
@@ -432,13 +433,13 @@ export default function Home() {
             <a href="#pricing" className="transition-colors hover:text-slate-900">Pricing</a>
           </div>
           <div className="flex items-center gap-4">
-            {session?.user ? (
+            {user ? (
               <>
                 <a href="/dashboard" className="text-sm font-medium text-slate-600 transition-colors hover:text-slate-900">
                   Dashboard
                 </a>
                 <button
-                  onClick={() => signOut({ fetchOptions: { onSuccess: () => window.location.reload() } })}
+                  onClick={() => { signOut(); window.location.reload(); }}
                   className="text-sm font-medium text-slate-500 transition-colors hover:text-slate-700"
                 >
                   Sign out
@@ -513,7 +514,7 @@ export default function Home() {
             </p>
             <div className="animate-fade-up stagger-4 mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <a
-                href={session?.user ? "/dashboard" : "/auth/register"}
+                href={user ? "/dashboard" : "/auth/register"}
                 className="btn-press inline-flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
               >
                 Start migrating
@@ -1011,7 +1012,7 @@ export default function Home() {
               </p>
               <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
                 <a
-                  href={session?.user ? "/dashboard" : "/auth/register"}
+                  href={user ? "/dashboard" : "/auth/register"}
                   className="btn-press inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-semibold text-slate-900 transition-colors hover:bg-slate-100"
                 >
                   Get started free
@@ -1106,7 +1107,7 @@ export default function Home() {
             <span className="text-sm text-slate-500">© 2026 MigratorGen. All rights reserved.</span>
           </div>
           <nav className="flex items-center gap-6 text-sm text-slate-500">
-            <a href={session?.user ? "/dashboard" : "/auth/login"} className="transition-colors hover:text-slate-900">Dashboard</a>
+            <a href={user ? "/dashboard" : "/auth/login"} className="transition-colors hover:text-slate-900">Dashboard</a>
             <a href="#libraries" className="transition-colors hover:text-slate-900">Libraries</a>
             <a href="#" className="transition-colors hover:text-slate-900">GitHub</a>
           </nav>

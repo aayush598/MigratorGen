@@ -1,27 +1,18 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getSessionCookie } from "better-auth/cookies";
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-const protectedPaths = ["/dashboard", "/migrations", "/libraries", "/api-keys", "/settings", "/billing", "/rules"];
-const authPaths = ["/auth/login", "/auth/register", "/auth/forgot-password", "/auth/reset-password"];
+const publicRoutes = ["/", "/auth/login", "/auth/register"];
 
-export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-  const sessionCookie = getSessionCookie(request);
+const isPublicRoute = createRouteMatcher(publicRoutes);
 
-  const isProtected = protectedPaths.some((path) => pathname.startsWith(path));
-  const isAuthPath = authPaths.some((path) => pathname.startsWith(path));
-
-  if (isProtected && !sessionCookie) {
-    return NextResponse.redirect(new URL("/auth/login", request.url));
+export default clerkMiddleware(async (auth, request) => {
+  if (!isPublicRoute(request)) {
+    await auth.protect();
   }
-
-  if (isAuthPath && sessionCookie) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
-  }
-
-  return NextResponse.next();
-}
+});
 
 export const config = {
-  matcher: ["/((?!_next|api/auth|favicon.ico|.*\\.).*)"],
+  matcher: [
+    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
+    "/(api|trpc)(.*)",
+  ],
 };

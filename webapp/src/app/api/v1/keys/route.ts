@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { eq, and } from "drizzle-orm";
-import { db } from "@/lib/db";
+import { getDb } from "@/lib/db";
 import { apiKey } from "@/lib/db-schema";
 import { requireSession, errorResponse } from "@/lib/api-helpers";
 
@@ -16,6 +16,7 @@ export async function GET() {
     const auth = await requireSession();
     if (!auth.ok) return auth.response;
 
+    const db = getDb();
     const keys = await db
       .select()
       .from(apiKey)
@@ -49,6 +50,7 @@ export async function POST(request: Request) {
     const { raw, hash, prefix } = generateApiKey();
     const id = `key_${randomBytes(6).toString("hex")}`;
 
+    const db = getDb();
     await db.insert(apiKey).values({
       id,
       userId: auth.session.userId,
@@ -84,6 +86,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Missing keyId" }, { status: 400 });
     }
 
+    const db = getDb();
     const deleted = await db
       .update(apiKey)
       .set({ isActive: false })

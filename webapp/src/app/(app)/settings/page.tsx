@@ -1,17 +1,20 @@
 "use client";
 
-import { useState } from "react";
-import { useSession, signOut } from "@/lib/auth-client";
+import { useUser, useClerk } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 
 export default function SettingsPage() {
-  const { data: session } = useSession();
+  const { user } = useUser();
+  const { signOut } = useClerk();
   const router = useRouter();
-  const [saved, setSaved] = useState(false);
 
   const handleSignOut = () => {
-    signOut({ fetchOptions: { onSuccess: () => router.push("/login") } });
+    signOut();
+    router.push("/auth/login");
   };
+
+  const email = user?.primaryEmailAddress?.emailAddress || "";
+  const userId = user?.id || "";
 
   return (
     <div className="max-w-2xl animate-fade-up">
@@ -27,13 +30,13 @@ export default function SettingsPage() {
           <div className="space-y-4">
             <div>
               <label className="block text-[13px] font-medium text-slate-600 mb-1.5">Email</label>
-              <input type="email" value={session?.user?.email || ""} disabled
+              <input type="email" value={email} disabled
                 className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[13px] text-slate-400 cursor-not-allowed" />
               <p className="text-[12px] text-slate-400 mt-1">Contact support to change your email</p>
             </div>
             <div>
               <label className="block text-[13px] font-medium text-slate-600 mb-1.5">User ID</label>
-              <input type="text" value={session?.user?.id || ""} disabled
+              <input type="text" value={userId} disabled
                 className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[13px] text-slate-400 font-mono cursor-not-allowed" />
             </div>
           </div>
