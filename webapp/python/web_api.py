@@ -10,10 +10,10 @@ import json
 import re
 import time
 
-from engine import serialization
-from engine.changelog_parser import ChangeType, MigrationRule, VersionChangelog
-from engine.migration_engine import TransactionalMigrationEngine
-from engine.validation import validate_rules_from_file
+from migrator_gen.utils import serialization
+from migrator_gen.core.changelog_parser import ChangeType, MigrationRule, VersionChangelog
+from migrator_gen.core.migration_engine import TransactionalMigrationEngine
+from migrator_gen.core.validation import validate_rules_from_file
 
 _ENGINE = None
 
@@ -209,7 +209,7 @@ def validate(rules_content_json: str) -> str:
 
 
 def resolve_path(source_version: str, target_version: str, changelog_json: str) -> str:
-    from engine.version_resolver import VersionResolver
+    from migrator_gen.core.version_resolver import VersionResolver
 
     raw = json.loads(changelog_json)
     changelogs = []

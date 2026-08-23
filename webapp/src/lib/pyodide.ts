@@ -1,4 +1,4 @@
-import { readFile, readdir } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { PyodideInterface } from "pyodide";
 
@@ -58,26 +58,13 @@ type PyodideModule = { loadPyodide: (opts?: Record<string, unknown>) => Promise<
 
 let enginePromise: Promise<PyodideInterface> | null = null;
 
-async function writeEngineFiles(pyodide: PyodideInterface): Promise<void> {
-  const sitePackages = "/lib/python3.13/site-packages";
-  const engineDir = path.resolve(process.cwd(), "python", "engine");
+const SITE_PACKAGES = "/lib/python3.13/site-packages";
+const ENGINE_VERSION = "1.0.0";
+
+async function writeWebApiFile(pyodide: PyodideInterface): Promise<void> {
   const webApiPath = path.resolve(process.cwd(), "python", "web_api.py");
-
-  const entries = await readdir(engineDir);
-  const files = entries.filter((f) => f.endsWith(".py"));
-  if (files.length === 0) {
-    throw new EngineError("No Python engine files found", engineDir);
-  }
-
-  pyodide.FS.mkdirTree(path.posix.join(sitePackages, "engine"));
-  for (const file of files) {
-    const content = await readFile(path.join(engineDir, file), "utf-8");
-    pyodide.FS.writeFile(path.posix.join(sitePackages, "engine", file), content);
-  }
-  pyodide.FS.writeFile(
-    path.posix.join(sitePackages, "web_api.py"),
-    await readFile(webApiPath, "utf-8"),
-  );
+  const content = await readFile(webApiPath, "utf-8");
+  pyodide.FS.writeFile(path.posix.join(SITE_PACKAGES, "web_api.py"), content);
 }
 
 async function createEngine(): Promise<PyodideInterface> {
@@ -87,20 +74,20 @@ async function createEngine(): Promise<PyodideInterface> {
   try {
     await pyodide.loadPackage("micropip");
     const micropip = pyodide.pyimport("micropip");
-    await micropip.install(["libcst", "pydantic"]);
+    await micropip.install(["libcst", "pydantic", `migrator-gen==${ENGINE_VERSION}`]);
   } catch (err) {
     throw new EngineError("Failed to install Python dependencies", err);
   }
 
   try {
-    await writeEngineFiles(pyodide);
+    await writeWebApiFile(pyodide);
   } catch (err) {
-    throw new EngineError("Failed to load Python engine files", err);
+    throw new EngineError("Failed to load web_api.py", err);
   }
 
   pyodide.runPython(`
 import sys, json
-sys.path.insert(0, "/lib/python3.13/site-packages")
+sys.path.insert(0, "${SITE_PACKAGES}")
 import web_api
 `);
 

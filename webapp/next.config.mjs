@@ -9,7 +9,7 @@ const nextConfig = {
   reactStrictMode: true,
   outputFileTracingIncludes: {
     "/api/v1/**": [
-      path.join(__dirname, "python", "**", "*.py"),
+      path.join(__dirname, "python", "*.py"),
       path.join(__dirname, "..", "migration-packs", "*.json"),
     ],
   },
